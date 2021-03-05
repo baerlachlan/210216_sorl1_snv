@@ -44,8 +44,8 @@ cores <- detectCores() - 2
 # GDS conversion
 
 ```{r}
-vcfPath <- "/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/vcf/mergedVcf.vcf.gz"
-gdsPath <- "/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/gds/gdsTest.gds"
+vcfPath <- "/hpcfs/users/a1647910/210305_chromosomeProject/1_sorl1_4way/12_mergeVcfs/vcf/mergedVcf.vcf.gz"
+gdsPath <- "/hpcfs/users/a1647910/210305_chromosomeProject/1_sorl1_4way/12_mergeVcfs/gds/mergedGds.gds"
 makeGds <-!file.exists(gdsPath)
 if (makeGds) {
   seqVCF2GDS(vcfPath, gdsPath)
@@ -53,10 +53,56 @@ if (makeGds) {
 ```
 
 ```{r}
-gdsFile <- seqOpen("/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/gds/gdsTest.gds", readonly = FALSE)
+gds <- seqOpen(gdsPath, readonly = FALSE)
 ```
 
 ```{r}
+meta <- read_csv(here("files/SraRunTable.txt")) %>%
+  dplyr::select(Run, gender, Genotype) %>%
+  mutate(
+    bname = case_when(
+      Genotype == "wild-type" ~ "WT",
+      Genotype == "sorl1V1482Afs/+" ~ "V1482Afs",
+      Genotype == "sorl1R122Pfs/+" ~ "R122Pfs",
+      Genotype == "sorl1V1482Afs/R122Pfs" ~ "Trans"
+    )
+  ) %>%
+  dplyr::arrange(Genotype, Run) %>%
+  mutate(
+    sample =  paste0(bname, "_", c(1:4, 1:6, 1:6, 1:8))
+  ) %>%
+  dplyr::select(-bname) %>%
+  dplyr::arrange(Run)
+```
 
+```{r}
+samples <-  seqGetData(gds, "sample.id")
+chr <- paste(c(1:25))
+sampleDP <- seqGetData(gds, "annotation/format/DP") %>% 
+  t() %>% 
+  set_colnames(meta$sample) %>% 
+  as_tibble()
+```
+
+```{r}
+snps <- tibble(
+  variant.id = seqGetData(gds, "variant.id"),
+  chromosome = seqGetData(gds, "chromosome"),
+  position = seqGetData(gds, "position"),
+  allele = seqGetData(gds, "allele")
+) %>%
+  cbind(sampleDP) %>%
+  dplyr::filter(chromosome %in% chr) %>%
+  as_tibble()
+```
+
+```{r}
+snps %>% 
+  split(f = .$chromosome) %>% 
+  lapply(function(x){diff(x$position)}) %>% 
+  unlist() %>% 
+  mean() %>% 
+  divide_by(1000) %>% 
+  round(2)
 ```
 
