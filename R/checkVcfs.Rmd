@@ -1,0 +1,62 @@
+---
+title: "Template"
+author: "Lachlan Baer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE, 
+  fig.align = "center"
+)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+# Setup 
+
+```{r packages}
+library(tidyverse)
+library(here)
+library(SeqArray)
+library(VariantAnnotation)
+```
+
+```{r options}
+if (interactive()) setwd(here::here())
+theme_set(theme_bw())
+cores <- detectCores() - 2
+```
+
+# GDS conversion
+
+```{r}
+vcfPath <- "/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/vcf/mergedVcf.vcf.gz"
+gdsPath <- "/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/gds/gdsTest.gds"
+makeGds <-!file.exists(gdsPath)
+if (makeGds) {
+  seqVCF2GDS(vcfPath, gdsPath)
+}
+```
+
+```{r}
+gdsFile <- seqOpen("/hpcfs/users/a1647910/210216_sorl1_4way_vc/12_mergeVcfs/gds/gdsTest.gds", readonly = FALSE)
+```
+
+```{r}
+
+```
+

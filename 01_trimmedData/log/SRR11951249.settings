@@ -1,0 +1,121 @@
+AdapterRemoval ver. 2.3.1
+Trimming of single-end reads
+
+
+[Adapter sequences]
+Adapter1[1]: AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG
+Adapter2[1]: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT
+
+
+[Adapter trimming]
+RNG seed: 1490650832
+Alignment shift value: 2
+Global mismatch threshold: 0.333333
+Quality format (input): Phred+33
+Quality score max (input): 41
+Quality format (output): Phred+33
+Quality score max (output): 41
+Mate-number separator (input): '/'
+Trimming 5p: 0
+Trimming 3p: 0
+Trimming Ns: Yes
+Trimming Phred scores <= 20: Yes
+Trimming using sliding windows: No
+Minimum genomic length: 6
+Maximum genomic length: 4294967295
+Collapse overlapping reads: No
+Minimum overlap (in case of collapse): 11
+Minimum adapter overlap: 0
+
+
+[Trimming statistics]
+Total number of reads: 34736323
+Number of unaligned reads: 26450370
+Number of well aligned reads: 8285953
+Number of discarded mate 1 reads: 6960
+Number of singleton mate 1 reads: 34729363
+Number of reads with adapters[1]: 8285953
+Number of retained reads: 34729363
+Number of retained nucleotides: 2598814428
+Average length of retained reads: 74.8305
+
+
+[Length distribution]
+Length	Mate1	Discarded	All
+0	0	6903	6903
+1	0	16	16
+2	0	7	7
+3	0	0	0
+4	0	7	7
+5	0	27	27
+6	7	0	7
+7	20	0	20
+8	12	0	12
+9	13	0	13
+10	10	0	10
+11	29	0	29
+12	30	0	30
+13	69	0	69
+14	104	0	104
+15	234	0	234
+16	71	0	71
+17	104	0	104
+18	111	0	111
+19	185	0	185
+20	708	0	708
+21	57	0	57
+22	284	0	284
+23	46	0	46
+24	69	0	69
+25	77	0	77
+26	101	0	101
+27	114	0	114
+28	137	0	137
+29	167	0	167
+30	177	0	177
+31	209	0	209
+32	240	0	240
+33	330	0	330
+34	376	0	376
+35	417	0	417
+36	515	0	515
+37	654	0	654
+38	752	0	752
+39	954	0	954
+40	1212	0	1212
+41	1383	0	1383
+42	1395	0	1395
+43	1386	0	1386
+44	1434	0	1434
+45	1728	0	1728
+46	2074	0	2074
+47	2637	0	2637
+48	3448	0	3448
+49	3769	0	3769
+50	4385	0	4385
+51	5042	0	5042
+52	5608	0	5608
+53	5406	0	5406
+54	5862	0	5862
+55	6627	0	6627
+56	7681	0	7681
+57	11613	0	11613
+58	16750	0	16750
+59	15886	0	15886
+60	30439	0	30439
+61	32776	0	32776
+62	49258	0	49258
+63	58200	0	58200
+64	121052	0	121052
+65	84207	0	84207
+66	116716	0	116716
+67	29889	0	29889
+68	53716	0	53716
+69	97598	0	97598
+70	191946	0	191946
+71	248064	0	248064
+72	746824	0	746824
+73	1999748	0	1999748
+74	4530834	0	4530834
+75	10150724	0	10150724
+76	16074663	0	16074663
