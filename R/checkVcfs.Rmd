@@ -30,9 +30,9 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 
 ```{r packages}
 library(tidyverse)
+library(magrittr)
 library(here)
 library(SeqArray)
-library(VariantAnnotation)
 ```
 
 ```{r options}
@@ -54,6 +54,7 @@ if (makeGds) {
 
 ```{r}
 gds <- seqOpen(gdsPath, readonly = FALSE)
+print(gds, all=TRUE, attribute=TRUE)
 ```
 
 ```{r}
@@ -82,6 +83,7 @@ sampleDP <- seqGetData(gds, "annotation/format/DP") %>%
   t() %>% 
   set_colnames(meta$sample) %>% 
   as_tibble()
+sampleAD <- 
 ```
 
 ```{r}
@@ -95,14 +97,7 @@ snps <- tibble(
   dplyr::filter(chromosome %in% chr) %>%
   as_tibble()
 ```
-
 ```{r}
-snps %>% 
-  split(f = .$chromosome) %>% 
-  lapply(function(x){diff(x$position)}) %>% 
-  unlist() %>% 
-  mean() %>% 
-  divide_by(1000) %>% 
-  round(2)
+seqSetFilter(gds, 1)
 ```
 
