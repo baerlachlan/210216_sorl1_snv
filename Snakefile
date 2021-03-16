@@ -20,12 +20,21 @@ SAMPLES = \
 "SRR11951240", "SRR11951241", "SRR11951242", "SRR11951243", "SRR11951244", "SRR11951245", \
 "SRR11951246", "SRR11951247", "SRR11951248", "SRR11951249", "SRR11951250", "SRR11951251"]
 
-refs = "/hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/"
+FQC_EXT = ["zip", "html"]
+
+REFS = "/hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/"
 
 rule all:
 	input:
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		expand("00_rawData/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
+		expand("01_trimmedData/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
+		expand("02_alignedData/FastQC/{SAMPLE}Aligned.sortedByCoord.out_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
+		expand("03_markDuplicates/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
 		"12_mergeVcfs/vcf/mergedVcf.vcf.gz",
-		"12_mergeVcfs/vcf/mergedVcf.vcf.gz.tbi"
+		"12_mergeVcfs/vcf/mergedVcf.vcf.gz.tbi",
+		expand("13_freebayes/vcf/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES)
 
 rule fastqc_raw:
 	input:
@@ -36,7 +45,7 @@ rule fastqc_raw:
 	params:
 		outDir = "00_rawData/FastQC/"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -54,7 +63,7 @@ rule trim:
 	params:
 		bname = "01_trimmedData/fastq/{SAMPLE}"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -85,7 +94,7 @@ rule fastqc_trim:
 	params:
 		outDir = "01_trimmedData/FastQC/"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -95,16 +104,32 @@ rule fastqc_trim:
 	shell:
 		"fastqc -t {resources.cpu} -o {params.outDir} --noextract {input}"
 
+rule unzip_refFa:
+	input:
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.gz"
+	output:
+		temp(REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa")
+	conda:
+		"snakemake/envs/gatk.yaml"
+	resources:
+		cpu = 1,
+		ntasks = 1,
+		mem_mb = 4000,
+		hours = 0,
+		mins = 30
+	shell:
+		"gunzip -k {input}"
+
 rule star_index:
 	input:
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.gz",
-		gtf = refs + "Danio_rerio.GRCz11.101.chr.gtf.gz"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.gz",
+		gtf = REFS + "Danio_rerio.GRCz11.101.chr.gtf.gz"
 	output:
-		directory(refs + "star/")
+		temp(directory(REFS + "star/"))
 	params:
 		overhang = 75-1
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 16,
 		ntasks = 1,
@@ -131,14 +156,14 @@ rule star_index:
 rule align:
 	input:
 		trimFq = "01_trimmedData/fastq/{SAMPLE}.fastq.gz",
-		starIndex = refs + "star/"
+		starIndex = REFS + "star/"
 	output:
 		"02_alignedData/bam/{SAMPLE}Aligned.sortedByCoord.out.bam"
 	params:
 		overhang = 75-1,
 		bname = "02_alignedData/bam/{SAMPLE}"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 16,
 		ntasks = 1,
@@ -170,7 +195,7 @@ rule fastqc_align:
 	params:
 		outDir = "02_alignedData/FastQC/"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -190,7 +215,7 @@ rule mark_duplicates:
 		bamIndex = "03_markDuplicates/bam/{SAMPLE}.bai",
 		metrics = "03_markDuplicates/log/{SAMPLE}.metrics"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 2,
 		ntasks = 1,
@@ -217,7 +242,7 @@ rule fastqc_duplicates:
 	params:
 		outDir = "03_markDuplicates/FastQC/"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -231,11 +256,11 @@ rule fastqc_duplicates:
 ## https://gatk.broadinstitute.org/hc/en-us/articles/360035531652-FASTA-Reference-genome-format
 rule ref_dict:
 	input:
-		refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa"
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa"
 	output:
-		refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -247,11 +272,11 @@ rule ref_dict:
 
 rule ref_index:
 	input:
-		refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa"
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa"
 	output:
-		refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai"
+		REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
@@ -265,14 +290,14 @@ rule splitNCigar:
 	input:
 		bam = "03_markDuplicates/bam/{SAMPLE}.bam",
 		bamIndex = "03_markDuplicates/bam/{SAMPLE}.bai",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		bam = "04_splitNCigar/bam/{SAMPLE}.bam",
 		bamIndex = "04_splitNCigar/bam/{SAMPLE}.bai"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 2,
 		ntasks = 2,
@@ -298,7 +323,7 @@ rule addRG:
 		bam = "05_addRG/bam/{SAMPLE}.bam",
 		bamIndex = "05_addRG/bam/{SAMPLE}.bai"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -325,14 +350,14 @@ rule callVariants_noRecal:
 	input:
 		bam = "05_addRG/bam/{SAMPLE}.bam",
 		bamIndex = "05_addRG/bam/{SAMPLE}.bai",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		vcf = "06_callVariants_noRecal/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "06_callVariants_noRecal/vcf/{SAMPLE}.vcf.gz.tbi"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -354,14 +379,14 @@ rule knownVariants:
 	input:
 		vcf = "06_callVariants_noRecal/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "06_callVariants_noRecal/vcf/{SAMPLE}.vcf.gz.tbi",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		vcf = "07_knownVariants/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "07_knownVariants/vcf/{SAMPLE}.vcf.gz.tbi"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -388,15 +413,15 @@ rule baseRecal:
 	input:
 		bam = "05_addRG/bam/{SAMPLE}.bam",
 		bamIndex = "05_addRG/bam/{SAMPLE}.bai",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict",
 		dbsnp = "07_knownVariants/vcf/{SAMPLE}.vcf.gz",
 		dbsnpIndex = "07_knownVariants/vcf/{SAMPLE}.vcf.gz.tbi"
 	output:
 		"08_baseRecal/{SAMPLE}_recal"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -420,15 +445,15 @@ rule applyRecal:
 	input:
 		bam = "05_addRG/bam/{SAMPLE}.bam",
 		bamIndex = "05_addRG/bam/{SAMPLE}.bai",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict",
 		recal = "08_baseRecal/{SAMPLE}_recal"
 	output:
 		bam = "09_applyRecal/bam/{SAMPLE}.bam",
 		bamIndex = "09_applyRecal/bam/{SAMPLE}.bai"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -454,14 +479,14 @@ rule callVariants:
 	input:
 		bam = "09_applyRecal/bam/{SAMPLE}.bam",
 		bamIndex = "09_applyRecal/bam/{SAMPLE}.bai",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		vcf = "10_callVariants/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "10_callVariants/vcf/{SAMPLE}.vcf.gz.tbi"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -483,14 +508,14 @@ rule filterVariants:
 	input:
 		vcf = "10_callVariants/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "10_callVariants/vcf/{SAMPLE}.vcf.gz.tbi",
-		refFa = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		refIndex = refs + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = refs + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		vcf = "11_filterVariants/vcf/{SAMPLE}.vcf.gz",
 		vcfIndex = "11_filterVariants/vcf/{SAMPLE}.vcf.gz.tbi"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
@@ -522,7 +547,7 @@ rule filterVariants:
 # 		vcf = "12_mergeVcfs/vcf/mergedVcf.vcf.gz",
 # 		vcfIndex = "12_mergeVcfs/vcf/mergedVcf.vcf.gz.tbi"
 # 	conda:
-# 		"snakemake/envs/default.yaml"
+# 		"snakemake/envs/gatk.yaml"
 # 	resources:
 # 		cpu = 2,
 # 		ntasks = 2,
@@ -540,7 +565,7 @@ rule mergeVcfs:
 		vcf = "12_mergeVcfs/vcf/mergedVcf.vcf.gz",
 		vcfIndex = "12_mergeVcfs/vcf/mergedVcf.vcf.gz.tbi"
 	conda:
-		"snakemake/envs/default.yaml"
+		"snakemake/envs/gatk.yaml"
 	resources:
 		cpu = 2,
 		ntasks = 1,
@@ -552,3 +577,21 @@ rule mergeVcfs:
 		bcftools merge --threads {resources.cpu} -o {output.vcf} -O z {input.vcf}
 		bcftools index --threads {resources.cpu} -t {output.vcf}
 		"""
+
+rule freebayes:
+	input:
+		bam = "05_addRG/bam/{SAMPLE}.bam",
+		bamIndex = "05_addRG/bam/{SAMPLE}.bai",
+		refFa = REFS + "Danio_rerio.GRCz11.dna.primary_assembly.fa"
+	output:
+		vcf = "13_freebayes/vcf/{SAMPLE}.vcf.gz"
+	conda:
+		"snakemake/envs/freebayes.yaml"
+	resources:
+		cpu = 1,
+		ntasks = 1,
+		mem_mb = 2000,
+		hours = 0,
+		mins = 45
+	shell:
+		"freebayes -f {input.refFa} {input.bam} | vcffilter -f 'QUAL > 20' > {output.vcf}"
