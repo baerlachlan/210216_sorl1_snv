@@ -1,53 +1,53 @@
 STAR version=2.7.7a
 STAR compilation time,server,dir=Mon Dec 28 13:38:40 EST 2020 vega:/home/dobin/data/STAR/STARcode/STAR.master/source
 ##### Command Line:
-STAR --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star --runThreadN 16 --readFilesIn 1_trimmedData/fastq/SRR11951251.fastq.gz --readFilesCommand "gunzip -c" --sjdbOverhang 74 --outSAMtype BAM SortedByCoordinate --twopassMode Basic --outFileNamePrefix 2_alignedData/bam/SRR11951251
+STAR --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star --runThreadN 16 --readFilesIn 01_trimmedData/fastq/SRR11951251.fastq.gz --readFilesCommand "gunzip -c" --sjdbOverhang 74 --outSAMtype BAM SortedByCoordinate --twopassMode Basic --outFileNamePrefix 02_alignedData/bam/SRR11951251
 ##### Initial USER parameters from Command Line:
-outFileNamePrefix                 2_alignedData/bam/SRR11951251
+outFileNamePrefix                 02_alignedData/bam/SRR11951251
 ###### All USER parameters from Command Line:
 genomeDir                     /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star     ~RE-DEFINED
 runThreadN                    16     ~RE-DEFINED
-readFilesIn                   1_trimmedData/fastq/SRR11951251.fastq.gz        ~RE-DEFINED
+readFilesIn                   01_trimmedData/fastq/SRR11951251.fastq.gz        ~RE-DEFINED
 readFilesCommand              "gunzip -c"        ~RE-DEFINED
 sjdbOverhang                  74     ~RE-DEFINED
 outSAMtype                    BAM   SortedByCoordinate        ~RE-DEFINED
 twopassMode                   Basic     ~RE-DEFINED
-outFileNamePrefix             2_alignedData/bam/SRR11951251     ~RE-DEFINED
+outFileNamePrefix             02_alignedData/bam/SRR11951251     ~RE-DEFINED
 ##### Finished reading parameters from all sources
 
 ##### Final user re-defined parameters-----------------:
 runThreadN                        16
 genomeDir                         /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star
-readFilesIn                       1_trimmedData/fastq/SRR11951251.fastq.gz   
+readFilesIn                       01_trimmedData/fastq/SRR11951251.fastq.gz   
 readFilesCommand                  "gunzip -c"   
-outFileNamePrefix                 2_alignedData/bam/SRR11951251
+outFileNamePrefix                 02_alignedData/bam/SRR11951251
 outSAMtype                        BAM   SortedByCoordinate   
 sjdbOverhang                      74
 twopassMode                       Basic
 
 -------------------------------
 ##### Final effective command line:
-STAR   --runThreadN 16   --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star   --readFilesIn 1_trimmedData/fastq/SRR11951251.fastq.gz      --readFilesCommand "gunzip -c"      --outFileNamePrefix 2_alignedData/bam/SRR11951251   --outSAMtype BAM   SortedByCoordinate      --sjdbOverhang 74   --twopassMode Basic
+STAR   --runThreadN 16   --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star   --readFilesIn 01_trimmedData/fastq/SRR11951251.fastq.gz      --readFilesCommand "gunzip -c"      --outFileNamePrefix 02_alignedData/bam/SRR11951251   --outSAMtype BAM   SortedByCoordinate      --sjdbOverhang 74   --twopassMode Basic
 ----------------------------------------
 
 Number of fastq files for each mate = 1
 
    Input read files for mate 1 :
--rw-r--r-- 1 a1647910 CATS_STUDENTS 1390604901 Feb 19 12:17 1_trimmedData/fastq/SRR11951251.fastq.gz
+-rw-r--r-- 1 a1647910 CATS_STUDENTS 1510043451 May  3 13:05 01_trimmedData/fastq/SRR11951251.fastq.gz
 
    readsCommandsFile:
-exec > "2_alignedData/bam/SRR11951251_STARtmp/tmp.fifo.read1"
+exec > "02_alignedData/bam/SRR11951251_STARtmp/tmp.fifo.read1"
 echo FILE 0
-gunzip -c      "1_trimmedData/fastq/SRR11951251.fastq.gz"
+gunzip -c      "01_trimmedData/fastq/SRR11951251.fastq.gz"
 
 WARNING: --limitBAMsortRAM=0, will use genome size as RAM limit for BAM sorting
 Finished loading and checking parameters
 Reading genome generation parameters:
-### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star   --genomeFastaFiles temp.fa      --sjdbGTFfile temp.gtf   --sjdbOverhang 74
+### STAR   --runMode genomeGenerate   --runThreadN 16   --genomeDir /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star   --genomeFastaFiles /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/Danio_rerio.GRCz11.dna.primary_assembly.fa      --sjdbGTFfile temp.gtf   --sjdbOverhang 74
 ### GstrandBit=32
 versionGenome                 2.7.4a     ~RE-DEFINED
 genomeType                    Full     ~RE-DEFINED
-genomeFastaFiles              temp.fa        ~RE-DEFINED
+genomeFastaFiles              /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/Danio_rerio.GRCz11.dna.primary_assembly.fa        ~RE-DEFINED
 genomeSAindexNbases           14     ~RE-DEFINED
 genomeChrBinNbits             18     ~RE-DEFINED
 genomeSAsparseD               1     ~RE-DEFINED
@@ -1057,7 +1057,7 @@ Number of real (reference) chromosomes= 993
 991	KN150216.1	1020	1601961984
 992	KN150481.1	1008	1602224128
 993	KN150525.1	650	1602486272
-Started loading the genome: Mon Feb 22 17:38:42 2021
+Started loading the genome: Mon May  3 13:53:56 2021
 
 Genome: size given as a parameter = 1640454058
 SA: size given as a parameter = 11601374395
@@ -1071,7 +1071,7 @@ Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 1640454058 byt
 SA file size: 11601374395 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 11601374395 bytes
 Loading SAindex ... done: 1565873619 bytes
-Finished loading the genome: Mon Feb 22 17:39:15 2021
+Finished loading the genome: Mon May  3 13:54:11 2021
 
 Processing splice junctions database sjdbN=253058,   pGe.sjdbOverhang=74 
 alignIntronMax=alignMatesGapMax=0, the max intron size will be approximately determined by (2^winBinNbits)*winAnchorDistNbins=589824
@@ -1083,8 +1083,6 @@ Created thread # 5
 Created thread # 6
 Created thread # 7
 Created thread # 8
-Starting to map file # 0
-mate 1:   1_trimmedData/fastq/SRR11951251.fastq.gz
 Created thread # 9
 Created thread # 10
 Created thread # 11
@@ -1092,24 +1090,26 @@ Created thread # 12
 Created thread # 13
 Created thread # 14
 Created thread # 15
-Thread #13 end of input stream, nextChar=-1
-Completed: thread #13
-Completed: thread #1
-Completed: thread #3
-Completed: thread #5
+Starting to map file # 0
+mate 1:   01_trimmedData/fastq/SRR11951251.fastq.gz
+Thread #3 end of input stream, nextChar=-1
+Completed: thread #2
 Completed: thread #4
-Completed: thread #8
-Completed: thread #7
-Completed: thread #10
 Completed: thread #6
+Completed: thread #5
+Completed: thread #3
+Completed: thread #7
 Completed: thread #9
-Completed: thread #14
+Completed: thread #8
+Completed: thread #10
+Completed: thread #13
 Completed: thread #11
-Completed: thread #0
-Joined thread # 1
+Completed: thread #14
 Completed: thread #12
 Completed: thread #15
-Completed: thread #2
+Completed: thread #0
+Completed: thread #1
+Joined thread # 1
 Joined thread # 2
 Joined thread # 3
 Joined thread # 4
@@ -1124,41 +1124,41 @@ Joined thread # 12
 Joined thread # 13
 Joined thread # 14
 Joined thread # 15
-Feb 22 17:41:00   Loaded database junctions from the generated genome /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star//sjdbList.out.tab: 253058 total junctions
+May 03 13:55:45   Loaded database junctions from the generated genome /hpcfs/users/a1647910/refs/ensembl-release-101/danio_rerio/star//sjdbList.out.tab: 253058 total junctions
 
-Feb 22 17:41:00   Loaded database junctions from the 1st pass file: 2_alignedData/bam/SRR11951251_STARpass1//SJ.out.tab: 450830 total junctions
+May 03 13:55:45   Loaded database junctions from the 1st pass file: 02_alignedData/bam/SRR11951251_STARpass1//SJ.out.tab: 451266 total junctions
 
 WARNING: long repeat for junction # 15588 : 10 19596636 19597001; left shift = 255; right shift = 58
 WARNING: long repeat for junction # 49248 : 14 2194821 2201680; left shift = 255; right shift = 67
 WARNING: long repeat for junction # 58506 : 15 14827403 14851352; left shift = 68; right shift = 255
 WARNING: long repeat for junction # 62246 : 15 29652210 29666695; left shift = 33; right shift = 255
 WARNING: long repeat for junction # 130121 : 21 25216740 25219252; left shift = 255; right shift = 23
-Feb 22 17:41:00   Finished preparing junctions
-Feb 22 17:41:00 ..... inserting junctions into the genome indices
-Feb 22 17:41:04   Finished SA search: number of new junctions=42665, old junctions=253058
-Feb 22 17:41:07   Finished sorting SA indicesL nInd=12615410
-Genome size with junctions=1646811143  1602748416   44062727
+May 03 13:55:45   Finished preparing junctions
+May 03 13:55:45 ..... inserting junctions into the genome indices
+May 03 13:55:48   Finished SA search: number of new junctions=42964, old junctions=253058
+May 03 13:55:52   Finished sorting SA indicesL nInd=12704724
+Genome size with junctions=1646855694  1602748416   44107278
 GstrandBit1=32   GstrandBit=32
-Feb 22 17:41:45   Finished inserting junction indices
-Feb 22 17:41:54   Finished SAi
-Feb 22 17:41:54 ..... finished inserting junctions into genome
+May 03 13:56:32   Finished inserting junction indices
+May 03 13:56:40   Finished SAi
+May 03 13:56:40 ..... finished inserting junctions into genome
 
    Input read files for mate 1 :
--rw-r--r-- 1 a1647910 CATS_STUDENTS 1390604901 Feb 19 12:17 1_trimmedData/fastq/SRR11951251.fastq.gz
+-rw-r--r-- 1 a1647910 CATS_STUDENTS 1510043451 May  3 13:05 01_trimmedData/fastq/SRR11951251.fastq.gz
 
    readsCommandsFile:
-exec > "2_alignedData/bam/SRR11951251_STARtmp/tmp.fifo.read1"
+exec > "02_alignedData/bam/SRR11951251_STARtmp/tmp.fifo.read1"
 echo FILE 0
-gunzip -c      "1_trimmedData/fastq/SRR11951251.fastq.gz"
+gunzip -c      "01_trimmedData/fastq/SRR11951251.fastq.gz"
 
 Created thread # 1
 Created thread # 2
 Created thread # 3
 Created thread # 4
-Starting to map file # 0
-mate 1:   1_trimmedData/fastq/SRR11951251.fastq.gz
 Created thread # 5
 Created thread # 6
+Starting to map file # 0
+mate 1:   01_trimmedData/fastq/SRR11951251.fastq.gz
 Created thread # 7
 Created thread # 8
 Created thread # 9
@@ -1168,71 +1168,72 @@ Created thread # 12
 Created thread # 13
 Created thread # 14
 Created thread # 15
-BAM sorting: 305397 mapped reads
+BAM sorting: 304056 mapped reads
 BAM sorting bins genomic start loci:
-1	0	29817809
-2	1	1648044
-3	1	26560166
-4	2	3910040
-5	2	41708109
-6	3	25894765
-7	4	10261049
-8	4	45016109
-9	5	24317156
-10	5	45636304
-11	6	21791812
-12	7	7252901
-13	7	33353892
-14	8	6715320
-15	8	42304286
-16	9	26896045
-17	10	6328446
-18	10	21830537
-19	10	47436112
-20	11	30555714
-21	11	56210674
-22	12	28833900
-23	12	51810650
-24	13	22083600
-25	13	44563102
-26	14	26789328
-27	15	22677593
-28	15	44763537
-29	16	37818486
-30	17	20624695
-31	18	16068081
-32	18	34767342
-33	19	135169
-34	19	26629813
-35	20	18059515
-36	20	38517323
-37	21	3405214
-38	21	35677272
-39	22	6798433
-40	22	37900877
-41	23	1698355
-42	23	29799132
-43	24	9184062
-44	24	52724825
+1	0	31122653
+2	1	1709428
+3	1	26717156
+4	2	4693660
+5	2	41707853
+6	3	25894806
+7	4	10476173
+8	4	45016045
+9	5	24317198
+10	5	45636262
+11	6	21772660
+12	7	6955008
+13	7	33104898
+14	8	6715192
+15	8	42063274
+16	9	26913935
+17	10	6328372
+18	10	21830523
+19	10	47190237
+20	11	30319088
+21	11	56130119
+22	12	28533264
+23	12	51211477
+24	13	21269168
+25	13	43896253
+26	14	24718016
+27	15	22662041
+28	15	44763367
+29	16	37567849
+30	17	20121271
+31	18	16045544
+32	18	34692956
+33	19	134763
+34	19	26763142
+35	20	18056880
+36	20	38611052
+37	21	3562324
+38	21	37026814
+39	22	7039565
+40	22	38094310
+41	23	1700936
+42	23	30338892
+43	24	9196005
+44	24	52837977
 45	25	6951
-46	25	8150
-47	25	9750
-48	25	14806
-Thread #14 end of input stream, nextChar=-1
-Completed: thread #14
-Completed: thread #5
-Completed: thread #10
+46	25	8151
+47	25	9749
+48	25	14802
+Thread #3 end of input stream, nextChar=-1
 Completed: thread #4
-Completed: thread #3
 Completed: thread #2
+Completed: thread #5
+Completed: thread #6
+Completed: thread #3
 Completed: thread #7
 Completed: thread #9
-Completed: thread #12
+Completed: thread #10
 Completed: thread #8
-Completed: thread #6
+Completed: thread #11
+Completed: thread #12
+Completed: thread #14
 Completed: thread #13
 Completed: thread #0
-Completed: thread #11
+Completed: thread #15
 Completed: thread #1
 Joined thread # 1
 Joined thread # 2
@@ -1248,8 +1249,7 @@ Joined thread # 11
 Joined thread # 12
 Joined thread # 13
 Joined thread # 14
-Completed: thread #15
 Joined thread # 15
-Feb 22 17:43:51 ..... started sorting BAM
-Max memory needed for sorting = 162992175
+May 03 13:58:15 ..... started sorting BAM
+Max memory needed for sorting = 163254483
 ALL DONE!

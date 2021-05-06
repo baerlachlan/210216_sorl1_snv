@@ -1,0 +1,15 @@
+Status	02_alignedData/bam/SRR11951228Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951229Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951230Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951231Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951232Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951233Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951234Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951235Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951236Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951237Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951238Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951239Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951240Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951241Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951242Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951243Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951244Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951245Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951246Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951247Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951248Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951249Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951250Aligned.sortedByCoord.out.bam	02_alignedData/bam/SRR11951251Aligned.sortedByCoord.out.bam
+Assigned	22332356	21205726	26495757	23615285	27465045	23899271	23820642	24556306	26701621	25384240	24538775	24454402	22133349	25784823	22697273	23579616	26276021	22412727	20394568	23616556	23887841	23764071	25966149	23575467
+Unassigned_Unmapped	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Read_Type	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Singleton	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MappingQuality	3775415	3693965	3129291	3064324	2945405	3254348	3475429	3008539	3320615	3580902	3132060	3502264	3044232	3937635	4064350	2757476	3253116	2989681	3616404	3341470	2606206	3024116	2827608	2893352
+Unassigned_Chimera	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Duplicate	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_MultiMapping	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Secondary	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NonSplit	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_NoFeatures	7773948	7705466	8021327	7733348	7358489	8504801	8150660	7944275	8250453	7738495	7698537	8793759	8206244	8376286	8303440	7844004	8172465	8106710	7519500	8530504	6598442	8264617	7922907	7783275
+Unassigned_Overlapping_Length	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+Unassigned_Ambiguity	518772	509395	573869	519402	593846	537511	544929	523037	607144	519999	529804	555461	518574	554577	538522	533073	541446	494480	529908	542047	553686	526703	578751	506547

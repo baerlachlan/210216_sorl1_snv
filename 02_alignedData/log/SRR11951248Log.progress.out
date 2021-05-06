@@ -1,9 +1,8 @@
            Time    Speed        Read     Read   Mapped   Mapped   Mapped   Mapped Unmapped Unmapped Unmapped Unmapped
                     M/hr      number   length   unique   length   MMrate    multi   multi+       MM    short    other
-Feb 22 17:39:14	Started 1st pass mapping
-Feb 22 17:39:22     75.2      167199       74    94.7%     74.5     0.7%     2.3%     0.4%     0.0%     2.3%     0.3%
-Feb 22 17:40:22   1184.5    22373855       74    94.7%     74.5     0.7%     2.4%     0.4%     0.0%     2.2%     0.3%
-Feb 22 17:40:49	Finished 1st pass mapping
-Feb 22 17:42:48   1040.3    17337790       74    94.7%     74.5     0.7%     2.5%     0.4%     0.0%     2.1%     0.4%
-Feb 22 17:43:49    977.1    32841120       74    94.7%     74.5     0.7%     2.5%     0.4%     0.0%     2.1%     0.4%
+May 03 13:53:47	Started 1st pass mapping
+May 03 13:53:53     99.7      166105       75    94.7%     75.1     0.7%     2.3%     0.4%     0.0%     2.3%     0.3%
+May 03 13:54:53   1274.2    23360282       75    94.7%     75.1     0.7%     2.4%     0.4%     0.0%     2.2%     0.3%
+May 03 13:55:16	Finished 1st pass mapping
+May 03 13:57:06   1178.9    19647790       75    94.7%     75.1     0.7%     2.4%     0.4%     0.0%     2.2%     0.3%
 ALL DONE!
