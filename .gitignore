@@ -25,7 +25,7 @@ R/\.*
 bash/\.*
 *.gtf.gz
 .snakemake/*
-/snakemake/logs/*
+/smk/log/*
 *vcf.gz*
 *.gds
 *.alleleCounts.tsv

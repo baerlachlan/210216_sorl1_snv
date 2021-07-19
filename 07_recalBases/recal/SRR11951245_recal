@@ -1,0 +1,598 @@
+#:GATKReport.v1.1:5
+#:GATKTable:2:17:%s:%s:;
+#:GATKTable:Arguments:Recalibration argument collection values used in this run
+Argument                    Value                                                                   
+binary_tag_name             null                                                                    
+covariate                   ReadGroupCovariate,QualityScoreCovariate,ContextCovariate,CycleCovariate
+default_platform            null                                                                    
+deletions_default_quality   45                                                                      
+force_platform              null                                                                    
+indels_context_size         3                                                                       
+insertions_default_quality  45                                                                      
+low_quality_tail            2                                                                       
+maximum_cycle_value         500                                                                     
+mismatches_context_size     2                                                                       
+mismatches_default_quality  -1                                                                      
+no_standard_covs            false                                                                   
+quantizing_levels           16                                                                      
+recalibration_report        null                                                                    
+run_without_dbsnp           false                                                                   
+solid_nocall_strategy       THROW_EXCEPTION                                                         
+solid_recal_mode            SET_Q_ZERO                                                              
+
+#:GATKTable:3:94:%d:%d:%d:;
+#:GATKTable:Quantized:Quality quantization map
+QualityScore  Count      QuantizedScore
+           0          0              93
+           1          0              93
+           2          0              93
+           3          0              93
+           4          0              93
+           5          0              93
+           6          0              93
+           7          0              93
+           8          0              93
+           9          0              93
+          10          0              93
+          11          0              93
+          12          0              93
+          13          0              93
+          14   24186381              14
+          15          0              93
+          16          0              93
+          17          0              93
+          18    6234972              18
+          19          0              93
+          20          0              93
+          21          0              93
+          22          0              93
+          23    3763992              23
+          24          0              24
+          25  768921020              25
+          26          0              93
+          27          0              93
+          28          0              93
+          29          0              93
+          30          0              93
+          31          0              93
+          32          0              93
+          33          0              93
+          34          0              93
+          35          0              93
+          36          0              93
+          37          0              93
+          38          0              93
+          39          0              93
+          40          0              93
+          41          0              93
+          42          0              93
+          43          0              93
+          44          0              93
+          45          0              93
+          46          0              93
+          47          0              93
+          48          0              93
+          49          0              93
+          50          0              93
+          51          0              93
+          52          0              93
+          53          0              93
+          54          0              93
+          55          0              93
+          56          0              93
+          57          0              93
+          58          0              93
+          59          0              93
+          60          0              93
+          61          0              93
+          62          0              93
+          63          0              93
+          64          0              93
+          65          0              93
+          66          0              93
+          67          0              93
+          68          0              93
+          69          0              93
+          70          0              93
+          71          0              93
+          72          0              93
+          73          0              93
+          74          0              93
+          75          0              93
+          76          0              93
+          77          0              93
+          78          0              93
+          79          0              93
+          80          0              93
+          81          0              93
+          82          0              93
+          83          0              93
+          84          0              93
+          85          0              93
+          86          0              93
+          87          0              87
+          88          0              88
+          89          0              89
+          90          0              90
+          91          0              91
+          92          0              92
+          93          0              93
+
+#:GATKTable:6:1:%s:%s:%.4f:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable0:
+ReadGroup  EventType  EmpiricalQuality  EstimatedQReported  Observations  Errors    
+default    M                   23.0000             28.0903     803106365  3691784.00
+
+#:GATKTable:6:5:%s:%d:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable1:
+ReadGroup  QualityScore  EventType  EmpiricalQuality  Observations  Errors    
+default              14  M                   14.0000      24186381   895358.00
+default              21  M                   18.0000       6234972    89970.00
+default              27  M                   23.0000       3763992    20757.00
+default              32  M                   25.0000      88464142   281628.00
+default              36  M                   25.0000     680456878  2404071.00
+
+#:GATKTable:8:460:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable2:
+ReadGroup  QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors   
+default              14  1               Cycle          M                   23.0000        245363    1193.00
+default              14  10              Cycle          M                   16.0000        292167    7294.00
+default              14  11              Cycle          M                   16.0000        252866    6646.00
+default              14  12              Cycle          M                   16.0000        248570    6529.00
+default              14  13              Cycle          M                   16.0000        254146    6665.00
+default              14  14              Cycle          M                   16.0000        255619    6652.00
+default              14  15              Cycle          M                   16.0000        254925    6490.00
+default              14  16              Cycle          M                   16.0000        252053    6352.00
+default              14  17              Cycle          M                   16.0000        254685    6633.00
+default              14  18              Cycle          M                   16.0000        253681    6409.00
+default              14  19              Cycle          M                   16.0000        250943    6552.00
+default              14  2               Cycle          M                   21.0000        209608    1523.00
+default              14  20              Cycle          M                   16.0000        251599    6540.00
+default              14  21              Cycle          M                   16.0000        256418    6803.00
+default              14  22              Cycle          M                   16.0000        259242    6812.00
+default              14  23              Cycle          M                   16.0000        259738    6992.00
+default              14  24              Cycle          M                   16.0000        265740    7317.00
+default              14  25              Cycle          M                   16.0000        269545    7367.00
+default              14  26              Cycle          M                   15.0000        277195    9438.00
+default              14  27              Cycle          M                   15.0000        279255    9777.00
+default              14  28              Cycle          M                   15.0000        283991   10000.00
+default              14  29              Cycle          M                   15.0000        285618    9933.00
+default              14  3               Cycle          M                   13.0000        196491   10292.00
+default              14  30              Cycle          M                   14.0000        291113   10430.00
+default              14  31              Cycle          M                   15.0000        296339   10474.00
+default              14  32              Cycle          M                   14.0000        300708   10804.00
+default              14  33              Cycle          M                   14.0000        302633   10782.00
+default              14  34              Cycle          M                   14.0000        310511   11414.00
+default              14  35              Cycle          M                   14.0000        313812   11580.00
+default              14  36              Cycle          M                   14.0000        315222   11799.00
+default              14  37              Cycle          M                   14.0000        318745   11903.00
+default              14  38              Cycle          M                   14.0000        324393   12051.00
+default              14  39              Cycle          M                   14.0000        328465   12424.00
+default              14  4               Cycle          M                   14.0000        193707    7668.00
+default              14  40              Cycle          M                   14.0000        331026   12536.00
+default              14  41              Cycle          M                   14.0000        335165   12740.00
+default              14  42              Cycle          M                   14.0000        338042   13361.00
+default              14  43              Cycle          M                   14.0000        342732   13700.00
+default              14  44              Cycle          M                   14.0000        345799   13690.00
+default              14  45              Cycle          M                   14.0000        349039   14056.00
+default              14  46              Cycle          M                   14.0000        351852   14042.00
+default              14  47              Cycle          M                   14.0000        354235   14439.00
+default              14  48              Cycle          M                   14.0000        358747   14801.00
+default              14  49              Cycle          M                   14.0000        362560   15163.00
+default              14  5               Cycle          M                   14.0000        183616    6682.00
+default              14  50              Cycle          M                   14.0000        367399   15694.00
+default              14  51              Cycle          M                   14.0000        371387   16163.00
+default              14  52              Cycle          M                   14.0000        375511   16416.00
+default              14  53              Cycle          M                   14.0000        374488   16508.00
+default              14  54              Cycle          M                   13.0000        377836   17054.00
+default              14  55              Cycle          M                   13.0000        382197   17759.00
+default              14  56              Cycle          M                   13.0000        382572   17743.00
+default              14  57              Cycle          M                   13.0000        383423   17799.00
+default              14  58              Cycle          M                   13.0000        384743   18092.00
+default              14  59              Cycle          M                   13.0000        384132   18313.00
+default              14  6               Cycle          M                   15.0000        255449    7500.00
+default              14  60              Cycle          M                   13.0000        386879   18564.00
+default              14  61              Cycle          M                   13.0000        389364   18927.00
+default              14  62              Cycle          M                   13.0000        391110   18829.00
+default              14  63              Cycle          M                   13.0000        392549   19256.00
+default              14  64              Cycle          M                   13.0000        394602   19306.00
+default              14  65              Cycle          M                   13.0000        394268   19401.00
+default              14  66              Cycle          M                   13.0000        394382   19058.00
+default              14  67              Cycle          M                   13.0000        392477   19265.00
+default              14  68              Cycle          M                   13.0000        393083   19248.00
+default              14  69              Cycle          M                   13.0000        393551   19287.00
+default              14  7               Cycle          M                   15.0000        233573    7705.00
+default              14  70              Cycle          M                   13.0000        389522   18446.00
+default              14  71              Cycle          M                   13.0000        386363   17428.00
+default              14  72              Cycle          M                   14.0000        387182   16954.00
+default              14  73              Cycle          M                   14.0000        378943   14110.00
+default              14  74              Cycle          M                   16.0000        362956    8686.00
+default              14  75              Cycle          M                   31.0000        325409       0.00
+default              14  76              Cycle          M                   31.0000        357954       0.00
+default              14  8               Cycle          M                   16.0000        275017    7728.00
+default              14  9               Cycle          M                   16.0000        270141    7371.00
+default              14  AA              Context        M                   14.0000       1966003   86916.00
+default              14  AC              Context        M                   13.0000        998769   48171.00
+default              14  AG              Context        M                   15.0000       1255509   35578.00
+default              14  AT              Context        M                   15.0000       1363475   40226.00
+default              14  CA              Context        M                   15.0000       2862770   98238.00
+default              14  CC              Context        M                   12.0000       1198802   73333.00
+default              14  CG              Context        M                   11.0000        715505   53385.00
+default              14  CT              Context        M                   18.0000       1616714   26794.00
+default              14  GA              Context        M                   16.0000       2665928   70903.00
+default              14  GC              Context        M                   11.0000       1051405   75480.00
+default              14  GG              Context        M                   14.0000       1063077   45893.00
+default              14  GT              Context        M                   18.0000       1448895   23816.00
+default              14  TA              Context        M                   11.0000       1180904  103750.00
+default              14  TC              Context        M                   16.0000       1304846   35827.00
+default              14  TG              Context        M                   17.0000       1660849   33570.00
+default              14  TT              Context        M                   16.0000       1587326   42275.00
+default              21  1               Cycle          M                   28.0000        168596     150.00
+default              21  10              Cycle          M                   20.0000        118929    1334.00
+default              21  11              Cycle          M                   18.0000        110492    1612.00
+default              21  12              Cycle          M                   18.0000        107753    1627.00
+default              21  13              Cycle          M                   19.0000        113095    1577.00
+default              21  14              Cycle          M                   19.0000        111971    1580.00
+default              21  15              Cycle          M                   19.0000        112473    1546.00
+default              21  16              Cycle          M                   19.0000        111751    1484.00
+default              21  17              Cycle          M                   18.0000        113680    1679.00
+default              21  18              Cycle          M                   19.0000        113048    1544.00
+default              21  19              Cycle          M                   19.0000        111443    1510.00
+default              21  2               Cycle          M                   26.0000         85096     129.00
+default              21  20              Cycle          M                   19.0000        112027    1498.00
+default              21  21              Cycle          M                   18.0000        113244    1649.00
+default              21  22              Cycle          M                   19.0000        110728    1600.00
+default              21  23              Cycle          M                   19.0000        107043    1549.00
+default              21  24              Cycle          M                   19.0000        109499    1527.00
+default              21  25              Cycle          M                   18.0000        105772    1599.00
+default              21  26              Cycle          M                   18.0000        104438    1865.00
+default              21  27              Cycle          M                   18.0000        102955    1869.00
+default              21  28              Cycle          M                   18.0000         99886    1761.00
+default              21  29              Cycle          M                   18.0000         95863    1694.00
+default              21  3               Cycle          M                   17.0000         83696    1866.00
+default              21  30              Cycle          M                   18.0000         95520    1706.00
+default              21  31              Cycle          M                   18.0000         91947    1577.00
+default              21  32              Cycle          M                   17.0000         87800    1636.00
+default              21  33              Cycle          M                   18.0000         84124    1480.00
+default              21  34              Cycle          M                   17.0000         85273    1620.00
+default              21  35              Cycle          M                   18.0000         81231    1428.00
+default              21  36              Cycle          M                   18.0000         77223    1347.00
+default              21  37              Cycle          M                   18.0000         75211    1339.00
+default              21  38              Cycle          M                   18.0000         73189    1299.00
+default              21  39              Cycle          M                   18.0000         70054    1223.00
+default              21  4               Cycle          M                   18.0000         98383    1574.00
+default              21  40              Cycle          M                   18.0000         67677    1229.00
+default              21  41              Cycle          M                   18.0000         64939    1149.00
+default              21  42              Cycle          M                   18.0000         63481    1074.00
+default              21  43              Cycle          M                   18.0000         61533    1103.00
+default              21  44              Cycle          M                   18.0000         58752    1024.00
+default              21  45              Cycle          M                   18.0000         56637     951.00
+default              21  46              Cycle          M                   18.0000         55462     945.00
+default              21  47              Cycle          M                   18.0000         52853     923.00
+default              21  48              Cycle          M                   18.0000         51682     823.00
+default              21  49              Cycle          M                   18.0000         51203     848.00
+default              21  5               Cycle          M                   18.0000        104340    1691.00
+default              21  50              Cycle          M                   18.0000         49501     827.00
+default              21  51              Cycle          M                   18.0000         48726     780.00
+default              21  52              Cycle          M                   18.0000         48080     814.00
+default              21  53              Cycle          M                   18.0000         48350     742.00
+default              21  54              Cycle          M                   18.0000         49123     763.00
+default              21  55              Cycle          M                   19.0000         50219     744.00
+default              21  56              Cycle          M                   18.0000         49697     769.00
+default              21  57              Cycle          M                   18.0000         51697     800.00
+default              21  58              Cycle          M                   19.0000         53617     797.00
+default              21  59              Cycle          M                   19.0000         55219     774.00
+default              21  6               Cycle          M                   18.0000        159288    2348.00
+default              21  60              Cycle          M                   19.0000         58106     822.00
+default              21  61              Cycle          M                   19.0000         59521     830.00
+default              21  62              Cycle          M                   19.0000         60524     804.00
+default              21  63              Cycle          M                   19.0000         63693     844.00
+default              21  64              Cycle          M                   19.0000         63989     753.00
+default              21  65              Cycle          M                   19.0000         66074     815.00
+default              21  66              Cycle          M                   19.0000         68110     802.00
+default              21  67              Cycle          M                   19.0000         68838     857.00
+default              21  68              Cycle          M                   19.0000         69781     841.00
+default              21  69              Cycle          M                   19.0000         71172     864.00
+default              21  7               Cycle          M                   17.0000        132403    2943.00
+default              21  70              Cycle          M                   20.0000         72194     771.00
+default              21  71              Cycle          M                   20.0000         71874     777.00
+default              21  72              Cycle          M                   20.0000         71349     792.00
+default              21  73              Cycle          M                   21.0000         71454     618.00
+default              21  74              Cycle          M                   22.0000         68304     378.00
+default              21  75              Cycle          M                   27.0000         61281       0.00
+default              21  76              Cycle          M                   27.0000         56084       0.00
+default              21  8               Cycle          M                   18.0000         94750    1551.00
+default              21  9               Cycle          M                   18.0000         89962    1512.00
+default              21  AA              Context        M                   20.0000       1464331   15403.00
+default              21  AC              Context        M                   14.0000        194367    7107.00
+default              21  AG              Context        M                   18.0000        481124    6958.00
+default              21  AT              Context        M                   17.0000        367184    8056.00
+default              21  CA              Context        M                   22.0000        535578    3562.00
+default              21  CC              Context        M                   18.0000        168055    2597.00
+default              21  CG              Context        M                   15.0000        100247    3140.00
+default              21  CT              Context        M                   21.0000        163947    1164.00
+default              21  GA              Context        M                   22.0000        722248    4694.00
+default              21  GC              Context        M                   16.0000        161519    4034.00
+default              21  GG              Context        M                   16.0000        187035    4286.00
+default              21  GT              Context        M                   20.0000        201238    1923.00
+default              21  TA              Context        M                   16.0000        494890   11223.00
+default              21  TC              Context        M                   16.0000        204176    4896.00
+default              21  TG              Context        M                   19.0000        406565    4672.00
+default              21  TT              Context        M                   16.0000        213813    6105.00
+default              27  1               Cycle          M                   27.0000         14121      36.00
+default              27  10              Cycle          M                   26.0000          9865      38.00
+default              27  11              Cycle          M                   26.0000          9652      45.00
+default              27  12              Cycle          M                   25.0000         10120      57.00
+default              27  13              Cycle          M                   26.0000         10289      31.00
+default              27  14              Cycle          M                   26.0000         10072      45.00
+default              27  15              Cycle          M                   26.0000         10523      37.00
+default              27  16              Cycle          M                   26.0000         10490      44.00
+default              27  17              Cycle          M                   26.0000         10662      50.00
+default              27  18              Cycle          M                   26.0000         10877      37.00
+default              27  19              Cycle          M                   26.0000         11335      50.00
+default              27  2               Cycle          M                   26.0000          8767      46.00
+default              27  20              Cycle          M                   26.0000         10993      50.00
+default              27  21              Cycle          M                   25.0000         11488      58.00
+default              27  22              Cycle          M                   26.0000         12191      54.00
+default              27  23              Cycle          M                   26.0000         12902      44.00
+default              27  24              Cycle          M                   25.0000         14397      81.00
+default              27  25              Cycle          M                   25.0000         15562      86.00
+default              27  26              Cycle          M                   25.0000         16892      79.00
+default              27  27              Cycle          M                   25.0000         19564     108.00
+default              27  28              Cycle          M                   24.0000         21540     123.00
+default              27  29              Cycle          M                   25.0000         23783     111.00
+default              27  3               Cycle          M                   25.0000          9343      65.00
+default              27  30              Cycle          M                   24.0000         26961     141.00
+default              27  31              Cycle          M                   24.0000         29954     156.00
+default              27  32              Cycle          M                   24.0000         33312     162.00
+default              27  33              Cycle          M                   24.0000         36545     204.00
+default              27  34              Cycle          M                   24.0000         37873     206.00
+default              27  35              Cycle          M                   24.0000         41755     231.00
+default              27  36              Cycle          M                   24.0000         44694     241.00
+default              27  37              Cycle          M                   24.0000         47538     242.00
+default              27  38              Cycle          M                   24.0000         49118     256.00
+default              27  39              Cycle          M                   23.0000         51961     297.00
+default              27  4               Cycle          M                   26.0000          9811      38.00
+default              27  40              Cycle          M                   23.0000         53605     307.00
+default              27  41              Cycle          M                   23.0000         54716     317.00
+default              27  42              Cycle          M                   23.0000         56178     325.00
+default              27  43              Cycle          M                   24.0000         56965     278.00
+default              27  44              Cycle          M                   23.0000         57161     345.00
+default              27  45              Cycle          M                   23.0000         59046     370.00
+default              27  46              Cycle          M                   23.0000         59225     366.00
+default              27  47              Cycle          M                   23.0000         60133     362.00
+default              27  48              Cycle          M                   23.0000         61173     373.00
+default              27  49              Cycle          M                   23.0000         62169     380.00
+default              27  5               Cycle          M                   26.0000         10042      49.00
+default              27  50              Cycle          M                   23.0000         61851     404.00
+default              27  51              Cycle          M                   23.0000         62772     421.00
+default              27  52              Cycle          M                   23.0000         64924     426.00
+default              27  53              Cycle          M                   23.0000         64827     398.00
+default              27  54              Cycle          M                   23.0000         66620     435.00
+default              27  55              Cycle          M                   22.0000         69138     499.00
+default              27  56              Cycle          M                   23.0000         70232     471.00
+default              27  57              Cycle          M                   22.0000         72442     518.00
+default              27  58              Cycle          M                   22.0000         74635     528.00
+default              27  59              Cycle          M                   23.0000         78299     499.00
+default              27  6               Cycle          M                   26.0000         12044      59.00
+default              27  60              Cycle          M                   22.0000         81661     590.00
+default              27  61              Cycle          M                   22.0000         84205     564.00
+default              27  62              Cycle          M                   22.0000         87200     571.00
+default              27  63              Cycle          M                   22.0000         91804     608.00
+default              27  64              Cycle          M                   23.0000         93522     589.00
+default              27  65              Cycle          M                   22.0000         96614     656.00
+default              27  66              Cycle          M                   23.0000        103655     646.00
+default              27  67              Cycle          M                   22.0000        104054     681.00
+default              27  68              Cycle          M                   23.0000        106815     654.00
+default              27  69              Cycle          M                   23.0000        110038     677.00
+default              27  7               Cycle          M                   26.0000         10540      46.00
+default              27  70              Cycle          M                   23.0000        113895     695.00
+default              27  71              Cycle          M                   23.0000        114809     618.00
+default              27  72              Cycle          M                   23.0000        116845     629.00
+default              27  73              Cycle          M                   24.0000        120273     492.00
+default              27  74              Cycle          M                   26.0000        118525     287.00
+default              27  75              Cycle          M                   31.0000        107325       0.00
+default              27  76              Cycle          M                   31.0000         90873       0.00
+default              27  8               Cycle          M                   26.0000          9053      42.00
+default              27  9               Cycle          M                   26.0000          9139      33.00
+default              27  AA              Context        M                   23.0000         47360     284.00
+default              27  AC              Context        M                   23.0000        307007    1804.00
+default              27  AG              Context        M                   23.0000        183943     945.00
+default              27  AT              Context        M                   24.0000        103315     434.00
+default              27  CA              Context        M                   25.0000        208888     704.00
+default              27  CC              Context        M                   22.0000        545325    3904.00
+default              27  CG              Context        M                   20.0000        221581    2527.00
+default              27  CT              Context        M                   24.0000        235530     907.00
+default              27  GA              Context        M                   26.0000        126127     316.00
+default              27  GC              Context        M                   22.0000        382840    2408.00
+default              27  GG              Context        M                   22.0000        262676    1744.00
+default              27  GT              Context        M                   25.0000        146659     509.00
+default              27  TA              Context        M                   23.0000         37350     262.00
+default              27  TC              Context        M                   24.0000        416869    1847.00
+default              27  TG              Context        M                   24.0000        314580    1333.00
+default              27  TT              Context        M                   24.0000        209784     793.00
+default              32  1               Cycle          M                   43.0000      10359632     354.00
+default              32  10              Cycle          M                   24.0000        569169    2495.00
+default              32  11              Cycle          M                   24.0000        518255    2231.00
+default              32  12              Cycle          M                   24.0000        507347    2170.00
+default              32  13              Cycle          M                   24.0000        517801    2141.00
+default              32  14              Cycle          M                   24.0000        527944    2181.00
+default              32  15              Cycle          M                   24.0000        528594    2187.00
+default              32  16              Cycle          M                   24.0000        530827    2138.00
+default              32  17              Cycle          M                   24.0000        535494    2140.00
+default              32  18              Cycle          M                   24.0000        536045    2145.00
+default              32  19              Cycle          M                   24.0000        534086    2097.00
+default              32  2               Cycle          M                   43.0000      10428934     353.00
+default              32  20              Cycle          M                   24.0000        535654    2052.00
+default              32  21              Cycle          M                   24.0000        545047    2231.00
+default              32  22              Cycle          M                   24.0000        548378    2159.00
+default              32  23              Cycle          M                   24.0000        547954    2174.00
+default              32  24              Cycle          M                   24.0000        557781    2237.00
+default              32  25              Cycle          M                   24.0000        558790    2165.00
+default              32  26              Cycle          M                   24.0000        547603    2133.00
+default              32  27              Cycle          M                   24.0000        550056    2189.00
+default              32  28              Cycle          M                   24.0000        549270    2199.00
+default              32  29              Cycle          M                   24.0000        544995    2127.00
+default              32  3               Cycle          M                   23.0000      10353384   48237.00
+default              32  30              Cycle          M                   24.0000        548831    2102.00
+default              32  31              Cycle          M                   24.0000        546039    2179.00
+default              32  32              Cycle          M                   24.0000        546439    2164.00
+default              32  33              Cycle          M                   24.0000        542531    2195.00
+default              32  34              Cycle          M                   24.0000        547438    2105.00
+default              32  35              Cycle          M                   24.0000        542481    2182.00
+default              32  36              Cycle          M                   24.0000        536213    2139.00
+default              32  37              Cycle          M                   24.0000        532626    2167.00
+default              32  38              Cycle          M                   24.0000        533332    2161.00
+default              32  39              Cycle          M                   24.0000        531253    2070.00
+default              32  4               Cycle          M                   24.0000      10187291   40909.00
+default              32  40              Cycle          M                   24.0000        530401    2147.00
+default              32  41              Cycle          M                   24.0000        529018    2178.00
+default              32  42              Cycle          M                   24.0000        527548    2303.00
+default              32  43              Cycle          M                   24.0000        531102    2201.00
+default              32  44              Cycle          M                   24.0000        527725    2203.00
+default              32  45              Cycle          M                   24.0000        526932    2253.00
+default              32  46              Cycle          M                   24.0000        522796    2191.00
+default              32  47              Cycle          M                   24.0000        521663    2182.00
+default              32  48              Cycle          M                   24.0000        523712    2155.00
+default              32  49              Cycle          M                   24.0000        522901    2336.00
+default              32  5               Cycle          M                   24.0000      10002288   37541.00
+default              32  50              Cycle          M                   24.0000        523497    2283.00
+default              32  51              Cycle          M                   24.0000        523001    2398.00
+default              32  52              Cycle          M                   24.0000        524163    2398.00
+default              32  53              Cycle          M                   24.0000        513785    2342.00
+default              32  54              Cycle          M                   24.0000        511747    2338.00
+default              32  55              Cycle          M                   24.0000        512615    2386.00
+default              32  56              Cycle          M                   24.0000        507448    2345.00
+default              32  57              Cycle          M                   24.0000        501264    2382.00
+default              32  58              Cycle          M                   24.0000        491763    2341.00
+default              32  59              Cycle          M                   24.0000        486788    2316.00
+default              32  6               Cycle          M                   24.0000        539780    2534.00
+default              32  60              Cycle          M                   23.0000        485583    2378.00
+default              32  61              Cycle          M                   23.0000        484664    2345.00
+default              32  62              Cycle          M                   24.0000        483429    2289.00
+default              32  63              Cycle          M                   23.0000        481814    2332.00
+default              32  64              Cycle          M                   23.0000        481135    2379.00
+default              32  65              Cycle          M                   23.0000        477799    2332.00
+default              32  66              Cycle          M                   23.0000        483803    2407.00
+default              32  67              Cycle          M                   23.0000        481725    2390.00
+default              32  68              Cycle          M                   24.0000        481938    2246.00
+default              32  69              Cycle          M                   24.0000        486745    2306.00
+default              32  7               Cycle          M                   23.0000        538408    2674.00
+default              32  70              Cycle          M                   24.0000        492352    2236.00
+default              32  71              Cycle          M                   24.0000        501188    2152.00
+default              32  72              Cycle          M                   24.0000        512195    2171.00
+default              32  73              Cycle          M                   25.0000        514481    1823.00
+default              32  74              Cycle          M                   26.0000        513632    1340.00
+default              32  75              Cycle          M                   37.0000        484941       0.00
+default              32  76              Cycle          M                   37.0000        498951       0.00
+default              32  8               Cycle          M                   24.0000        599023    2704.00
+default              32  9               Cycle          M                   24.0000        550885    2463.00
+default              32  AA              Context        M                   26.0000       6028621   14027.00
+default              32  AC              Context        M                   24.0000       4114888   16039.00
+default              32  AG              Context        M                   23.0000       4268634   20251.00
+default              32  AT              Context        M                   25.0000       3976436   11986.00
+default              32  CA              Context        M                   27.0000       6676688   14890.00
+default              32  CC              Context        M                   24.0000       4840614   20315.00
+default              32  CG              Context        M                   21.0000       2732139   23828.00
+default              32  CT              Context        M                   26.0000       4866241   12462.00
+default              32  GA              Context        M                   28.0000       6302977   11280.00
+default              32  GC              Context        M                   25.0000       4582387   14812.00
+default              32  GG              Context        M                   23.0000       3757695   18181.00
+default              32  GT              Context        M                   26.0000       4077902   10546.00
+default              32  TA              Context        M                   24.0000       4400451   18857.00
+default              32  TC              Context        M                   24.0000       5280103   20812.00
+default              32  TG              Context        M                   24.0000       5950326   21662.00
+default              32  TT              Context        M                   23.0000       6247786   31326.00
+default              36  1               Cycle          M                   25.0000       1625689    5612.00
+default              36  10              Cycle          M                   24.0000      11074456   41344.00
+default              36  11              Cycle          M                   25.0000      11130365   39508.00
+default              36  12              Cycle          M                   24.0000      11097154   39680.00
+default              36  13              Cycle          M                   25.0000      11029155   38551.00
+default              36  14              Cycle          M                   25.0000      10972088   37991.00
+default              36  15              Cycle          M                   25.0000      10922972   37272.00
+default              36  16              Cycle          M                   25.0000      10878092   37136.00
+default              36  17              Cycle          M                   25.0000      10819517   36778.00
+default              36  18              Cycle          M                   25.0000      10770683   36880.00
+default              36  19              Cycle          M                   25.0000      10728420   35750.00
+default              36  2               Cycle          M                   25.0000       1685352    5642.00
+default              36  20              Cycle          M                   25.0000      10676297   35387.00
+default              36  21              Cycle          M                   25.0000      10610627   35712.00
+default              36  22              Cycle          M                   25.0000      10558403   35068.00
+default              36  23              Cycle          M                   25.0000      10512872   34844.00
+default              36  24              Cycle          M                   25.0000      10442863   34698.00
+default              36  25              Cycle          M                   25.0000      10392857   34741.00
+default              36  26              Cycle          M                   25.0000      10346425   33946.00
+default              36  27              Cycle          M                   25.0000      10289433   34054.00
+default              36  28              Cycle          M                   25.0000      10238331   33738.00
+default              36  29              Cycle          M                   25.0000      10194472   33367.00
+default              36  3               Cycle          M                   20.0000       1725731   19266.00
+default              36  30              Cycle          M                   25.0000      10132519   33577.00
+default              36  31              Cycle          M                   25.0000      10081763   33046.00
+default              36  32              Cycle          M                   25.0000      10028675   32896.00
+default              36  33              Cycle          M                   25.0000       9981555   33064.00
+default              36  34              Cycle          M                   25.0000       9917356   32625.00
+default              36  35              Cycle          M                   25.0000       9870516   33038.00
+default              36  36              Cycle          M                   25.0000       9826374   32928.00
+default              36  37              Cycle          M                   25.0000       9776724   32638.00
+default              36  38              Cycle          M                   25.0000       9721960   32274.00
+default              36  39              Cycle          M                   25.0000       9669116   32798.00
+default              36  4               Cycle          M                   21.0000       1834245   15654.00
+default              36  40              Cycle          M                   25.0000       9618950   32336.00
+default              36  41              Cycle          M                   25.0000       9568474   31700.00
+default              36  42              Cycle          M                   25.0000       9517245   32344.00
+default              36  43              Cycle          M                   25.0000       9461351   31751.00
+default              36  44              Cycle          M                   25.0000       9414516   32287.00
+default              36  45              Cycle          M                   25.0000       9362443   32181.00
+default              36  46              Cycle          M                   25.0000       9316057   31915.00
+default              36  47              Cycle          M                   25.0000       9268113   32459.00
+default              36  48              Cycle          M                   25.0000       9211539   31664.00
+default              36  49              Cycle          M                   25.0000       9159718   32093.00
+default              36  5               Cycle          M                   20.0000       1984374   19223.00
+default              36  50              Cycle          M                   25.0000       9105985   32132.00
+default              36  51              Cycle          M                   24.0000       9049632   32499.00
+default              36  52              Cycle          M                   24.0000       8991205   32296.00
+default              36  53              Cycle          M                   24.0000       8948682   32703.00
+default              36  54              Cycle          M                   24.0000       8890737   33070.00
+default              36  55              Cycle          M                   24.0000       8826976   33052.00
+default              36  56              Cycle          M                   24.0000       8775298   33502.00
+default              36  57              Cycle          M                   24.0000       8718628   33102.00
+default              36  58              Cycle          M                   24.0000       8665471   32891.00
+default              36  59              Cycle          M                   24.0000       8607299   33194.00
+default              36  6               Cycle          M                   24.0000      11271626   48125.00
+default              36  60              Cycle          M                   24.0000       8540259   33114.00
+default              36  61              Cycle          M                   24.0000       8474975   33316.00
+default              36  62              Cycle          M                   24.0000       8409868   32443.00
+default              36  63              Cycle          M                   24.0000       8338958   33006.00
+default              36  64              Cycle          M                   24.0000       8270797   32928.00
+default              36  65              Cycle          M                   24.0000       8207006   32080.00
+default              36  66              Cycle          M                   24.0000       8127029   32220.00
+default              36  67              Cycle          M                   24.0000       8065604   32262.00
+default              36  68              Cycle          M                   24.0000       7994369   31991.00
+default              36  69              Cycle          M                   24.0000       7916198   31523.00
+default              36  7               Cycle          M                   24.0000      11280280   46715.00
+default              36  70              Cycle          M                   24.0000       7837492   30460.00
+default              36  71              Cycle          M                   24.0000       7751996   28894.00
+default              36  72              Cycle          M                   24.0000       7644375   27447.00
+default              36  73              Cycle          M                   25.0000       7499940   22708.00
+default              36  74              Cycle          M                   26.0000       7223463   16719.00
+default              36  75              Cycle          M                   46.0000       6597330       0.00
+default              36  76              Cycle          M                   45.0000       4627058       0.00
+default              36  8               Cycle          M                   24.0000      11168301   44366.00
+default              36  9               Cycle          M                   24.0000      11184204   43857.00
+default              36  AA              Context        M                   26.0000      59232207  133143.00
+default              36  AC              Context        M                   24.0000      40592524  149102.00
+default              36  AG              Context        M                   23.0000      47626503  240665.00
+default              36  AT              Context        M                   25.0000      49202229  151582.00
+default              36  CA              Context        M                   27.0000      51944514  114978.00
+default              36  CC              Context        M                   24.0000      30836066  120907.00
+default              36  CG              Context        M                   20.0000      18929386  191623.00
+default              36  CT              Context        M                   26.0000      43949878  123597.00
+default              36  GA              Context        M                   27.0000      43169942   82004.00
+default              36  GC              Context        M                   25.0000      34146986  107439.00
+default              36  GG              Context        M                   22.0000      31749152  184639.00
+default              36  GT              Context        M                   25.0000      39038522  112695.00
+default              36  TA              Context        M                   24.0000      35142387  136361.00
+default              36  TC              Context        M                   24.0000      39935934  156437.00
+default              36  TG              Context        M                   24.0000      53277496  214503.00
+default              36  TT              Context        M                   25.0000      60052953  178763.00
+
