@@ -3,11 +3,12 @@ rule align:
 		R1 = "01_trim/fastq/{SAMPLE}.fastq.gz",
 		starIndex = "refs/star/"
 	output:
-		bam = temp("02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam"),
-		bamIndex = temp("02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam.bai")
+		bamRenamed = temp("02_align/bam/{SAMPLE}.bam"),
+		bamIndex = temp("02_align/bam/{SAMPLE}.bam.bai")
 	params:
 		overhang = READ_LEN-1,
-		bname = "02_align/bam/{SAMPLE}"
+		bname = "02_align/bam/{SAMPLE}",
+		bamBeforeRename = "02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -27,20 +28,21 @@ rule align:
 			--twopassMode Basic \
 			--outFileNamePrefix {params.bname}
 
+		mv {params.bamBeforeRename} {output.bamRenamed}
 
 		mkdir -p 02_align/log
 		mv {params.bname}*out 02_align/log
 		mv {params.bname}*tab 02_align/log
 
-		samtools index {output.bam}
+		samtools index {output.bamRenamed}
 		"""
 
 rule fastqc_align:
 	input:
-		"02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam"
+		"02_align/bam/{SAMPLE}.bam"
 	output:
-		"02_align/FastQC/{SAMPLE}Aligned.sortedByCoord.out_fastqc.zip",
-		"02_align/FastQC/{SAMPLE}Aligned.sortedByCoord.out_fastqc.html"
+		"02_align/FastQC/{SAMPLE}_fastqc.zip",
+		"02_align/FastQC/{SAMPLE}_fastqc.html"
 	params:
 		outDir = "02_align/FastQC/"
 	conda:

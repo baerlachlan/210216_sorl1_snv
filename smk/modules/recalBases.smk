@@ -13,9 +13,9 @@ rule recalBases:
 		"../envs/ase.yaml"
 	resources:
 		cpu = 1,
-		ntasks = 2,
+		ntasks = 1,
 		mem_mb = 4000,
-		time = "00-02:00:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		gatk --java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal \
@@ -46,7 +46,7 @@ rule applyRecal:
 		cpu = 1,
 		ntasks = 2,
 		mem_mb = 4000,
-		time = "00-08:00:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		gatk \
@@ -61,3 +61,21 @@ rule applyRecal:
             -O {output.bam} \
             --bqsr-recal-file {input.recal}
 		"""
+
+rule fastqc_recalBases:
+	input:
+		"07_recalBases/bam/{SAMPLE}.bam"
+	output:
+		"07_recalBases/FastQC/{SAMPLE}_fastqc.zip",
+		"07_recalBases/FastQC/{SAMPLE}_fastqc.html"
+	params:
+		outDir = "07_recalBases/FastQC/"
+	conda:
+		"../envs/ase.yaml"
+	resources:
+		cpu = 1,
+		ntasks = 1,
+		mem_mb = 2000,
+		time = "00-01:00:00"
+	shell:
+		"fastqc -t {resources.cpu} -o {params.outDir} --noextract {input}"

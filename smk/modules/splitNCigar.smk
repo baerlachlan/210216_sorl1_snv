@@ -11,9 +11,9 @@ rule splitNCigar:
 	conda:
 		"../envs/ase.yaml"
 	resources:
-		cpu = 8,
+		cpu = 4,
 		ntasks = 1,
-		mem_mb = 32000,
+		mem_mb = 16000,
 		time = "00-04:00:00"
 	shell:
 		"""

@@ -16,7 +16,7 @@ rule detectSnvs:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 8000,
-		time = "03-00:00:00"
+		time = "00-12:00:00"
 	shell:
 		"""
 		gatk --java-options "-Xms6000m -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -44,9 +44,9 @@ rule knownSnvs:
 		"../envs/ase.yaml"
 	resources:
 		cpu = 1,
-		ntasks = 2,
+		ntasks = 1,
 		mem_mb = 1000,
-		time = "00-02:00:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		gatk \

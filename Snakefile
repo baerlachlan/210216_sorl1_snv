@@ -21,6 +21,7 @@ SAMPLES = [
     "SRR11951246", "SRR11951247", "SRR11951248", "SRR11951249", "SRR11951250", "SRR11951251"
 ]
 REF_EXT = ["dict", "fa.fai"]
+FQC_DIRS = ["00_rawData", "01_trim", "02_align", "03_markDuplicates", "07_recalBases"]
 FQC_EXT = ["zip", "html"]
 VCF_EXT = ["vcf.gz", "vcf.gz.tbi"]
 
@@ -30,11 +31,8 @@ READ_LEN = 75
 
 rule all:
 	input:
-		expand("00_rawData/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
-		expand("01_trim/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
-		expand("02_align/FastQC/{SAMPLE}Aligned.sortedByCoord.out_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
+		expand("{DIR}/FastQC/{SAMPLE}_fastqc.{EXT}", DIR = FQC_DIRS, SAMPLE = SAMPLES, EXT = FQC_EXT),
         "02_align/featureCounts/genes.out",
-		expand("03_markDuplicates/FastQC/{SAMPLE}_fastqc.{EXT}", SAMPLE = SAMPLES, EXT = FQC_EXT),
         expand("08_callSnvs/selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
 
 include: "smk/modules/refs.smk"

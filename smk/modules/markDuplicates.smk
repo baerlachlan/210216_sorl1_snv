@@ -1,6 +1,6 @@
 rule markDuplicates:
 	input:
-		bam = "02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam"
+		bam = "02_align/bam/{SAMPLE}.bam"
 	output:
 		bam = temp("03_markDuplicates/bam/{SAMPLE}.bam"),
 		bamIndex = temp("03_markDuplicates/bam/{SAMPLE}.bai"),
@@ -37,6 +37,6 @@ rule fastqc_markDuplicates:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 2000,
-		time = "00-02:00:00"
+		time = "00-01:00:00"
 	shell:
 		"fastqc -t {resources.cpu} -o {params.outDir} --noextract {input}"
