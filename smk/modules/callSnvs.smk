@@ -4,10 +4,13 @@ rule callSnvs:
 		bamIndex = "07_recalBases/bam/{SAMPLE}.bai",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		dbsnp = "06_knownSnvs/filtered/{SAMPLE}.vcf.gz"
 	output:
 		vcf = temp("08_callSnvs/called/{SAMPLE}.vcf.gz"),
 		vcfIndex = temp("08_callSnvs/called/{SAMPLE}.vcf.gz.tbi")
+	params:
+		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -24,6 +27,12 @@ rule callSnvs:
 			-O {output.vcf} \
 			-dont-use-soft-clipped-bases \
 			--standard-min-confidence-threshold-for-calling 20
+
+		gatk \
+			CollectVariantCallingMetrics \
+			--DBSNP {input.dbsnp} \
+			--INPUT {output.vcf} \
+			--OUTPUT {params.metricsBname}
 		"""
 
 rule filterSnvs:
@@ -32,10 +41,13 @@ rule filterSnvs:
 		vcfIndex = "08_callSnvs/called/{SAMPLE}.vcf.gz.tbi",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
-		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict"
+		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		dbsnp = "06_knownSnvs/filtered/{SAMPLE}.vcf.gz"
 	output:
 		vcf = temp("08_callSnvs/filtered/{SAMPLE}.vcf.gz"),
 		vcfIndex = temp("08_callSnvs/filtered/{SAMPLE}.vcf.gz.tbi")
+	params:
+		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -56,15 +68,24 @@ rule filterSnvs:
 			--filter-name "QD" \
 			--filter "QD < 2.0" \
 			-O {output.vcf}
+
+		gatk \
+			CollectVariantCallingMetrics \
+			--DBSNP {input.dbsnp} \
+			--INPUT {output.vcf} \
+			--OUTPUT {params.metricsBname}
 		"""
 
 rule selectSnvs:
 	input:
 		vcf = "08_callSnvs/filtered/{SAMPLE}.vcf.gz",
-		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa"
+		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		dbsnp = "06_knownSnvs/filtered/{SAMPLE}.vcf.gz"
 	output:
 		vcf = "08_callSnvs/selected/{SAMPLE}.vcf.gz",
 		vcfIndex = "08_callSnvs/selected/{SAMPLE}.vcf.gz.tbi"
+	params:
+		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -80,4 +101,10 @@ rule selectSnvs:
 			-V {input.vcf} \
 			--select-type-to-include SNP \
 			-O {output.vcf}
+
+		gatk \
+			CollectVariantCallingMetrics \
+			--DBSNP {input.dbsnp} \
+			--INPUT {output.vcf} \
+			--OUTPUT {params.metricsBname}
 		"""

@@ -1,10 +1,13 @@
+## When MarkDuplicates (Picard) is run on coordinate sorted BAM files, unmapped mates of mapped records and supplementary/secondary alignments are excluded from the duplication test
+## For variant analysis with GATK this is not a problem because HaplotypeCaller filters unmapped reads and secondary alignments before analysing
 rule markDuplicates:
 	input:
 		bam = "02_align/bam/{SAMPLE}.bam"
 	output:
 		bam = temp("03_markDuplicates/bam/{SAMPLE}.bam"),
 		bamIndex = temp("03_markDuplicates/bam/{SAMPLE}.bai"),
-		metrics = "03_markDuplicates/log/{SAMPLE}.tsv"
+		metrics = "03_markDuplicates/log/{SAMPLE}.tsv",
+		flagstat = "03_markDuplicates/flagstat/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -21,22 +24,6 @@ rule markDuplicates:
 			--DUPLICATE_SCORING_STRATEGY RANDOM \
  	        --CREATE_INDEX true \
  	        --METRICS_FILE {output.metrics}
-		"""
 
-rule fastqc_markDuplicates:
-	input:
-		"03_markDuplicates/bam/{SAMPLE}.bam"
-	output:
-		"03_markDuplicates/FastQC/{SAMPLE}_fastqc.zip",
-		"03_markDuplicates/FastQC/{SAMPLE}_fastqc.html"
-	params:
-		outDir = "03_markDuplicates/FastQC/"
-	conda:
-		"../envs/ase.yaml"
-	resources:
-		cpu = 1,
-		ntasks = 1,
-		mem_mb = 2000,
-		time = "00-01:00:00"
-	shell:
-		"fastqc -t {resources.cpu} -o {params.outDir} --noextract {input}"
+		samtools flagstat -O tsv {output.bam} > {output.flagstat}
+		"""

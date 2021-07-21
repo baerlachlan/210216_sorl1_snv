@@ -7,7 +7,8 @@ rule splitNCigar:
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict"
 	output:
 		bam = temp("04_splitNCigar/bam/{SAMPLE}.bam"),
-		bamIndex = temp("04_splitNCigar/bam/{SAMPLE}.bai")
+		bamIndex = temp("04_splitNCigar/bam/{SAMPLE}.bai"),
+		flagstat = "04_splitNCigar/flagstat/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -22,4 +23,6 @@ rule splitNCigar:
             -R {input.refFa} \
             -I {input.bam} \
             -O {output.bam}
+
+		samtools flagstat -O tsv {output.bam} > {output.flagstat}
 		"""
