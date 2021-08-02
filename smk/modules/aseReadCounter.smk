@@ -1,11 +1,11 @@
 rule aseReadCounter:
 	input:
-		bam = "10_wasp/merge/{SAMPLE}.keep.merge.sort.bam",
-		bamIndex = "10_wasp/merge/{SAMPLE}.keep.merge.sort.bam.bai",
-		vcf = "09_callSnvs/selected/{SAMPLE}.vcf.gz",
+		bam = "09_wasp/merge/{SAMPLE}.keep.merge.sort.bam",
+		bamIndex = "09_wasp/merge/{SAMPLE}.keep.merge.sort.bam.bai",
+		vcf = "08_callSnvs/selected/{SAMPLE}.vcf.gz",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa"
 	output:
-		tsv = "11_aseReadCounter/{SAMPLE}.tsv"
+		tsv = "10_aseReadCounter/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:

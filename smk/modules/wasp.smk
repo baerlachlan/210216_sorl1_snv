@@ -1,15 +1,13 @@
 rule findIntersecting:
 	input:
-		bam = "08_recalBases/bam/{SAMPLE}.bam",
-		snpDir = "10_wasp/snvs/{SAMPLE}"
+		bam = "07_recalBases/bam/{SAMPLE}.bam",
+		snpDir = "09_wasp/snvs/{SAMPLE}"
 	output:
-		fq1 = temp("10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq1.gz"),
-		fq2 = temp("10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq2.gz"),
-		single = temp("10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.single.fq.gz"),
-		to_remap = temp("10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.to.remap.bam"),
-		keep_intersect = temp("10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.keep.bam")
+		fq = temp("09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq.gz"),
+		to_remap = temp("09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.to.remap.bam"),
+		keep_intersect = temp("09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.keep.bam")
 	params:
-		outDir = temp(directory("10_wasp/findIntersecting/{SAMPLE}"))
+		outDir = temp(directory("09_wasp/findIntersecting/{SAMPLE}"))
 	conda:
 		"../envs/wasp.yaml"
 	resources:
@@ -20,7 +18,6 @@ rule findIntersecting:
 	shell:
 		"""
 		python ../packages/WASP/mapping/find_intersecting_snps.py \
-    	    --is_paired_end \
     	    --is_sorted \
 			--output_dir {params.outDir} \
     	    --snp_dir {input.snpDir} \
@@ -29,16 +26,15 @@ rule findIntersecting:
 
 rule remap:
 	input:
-		fq1 = "10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq1.gz",
-		fq2 = "10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq2.gz",
+		fq = "09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.remap.fq.gz",
 		starIndex = "refs/star/"
 	output:
-		remapped_unsorted = temp("10_wasp/remap/{SAMPLE}Aligned.out.bam"),
-		remapped_sorted = temp("10_wasp/remap/{SAMPLE}sorted.out.bam"),
-		index = temp("10_wasp/remap/{SAMPLE}sorted.out.bam.bai")
+		remapped_unsorted = temp("09_wasp/remap/{SAMPLE}Aligned.out.bam"),
+		remapped_sorted = temp("09_wasp/remap/{SAMPLE}sorted.out.bam"),
+		index = temp("09_wasp/remap/{SAMPLE}sorted.out.bam.bai")
 	params:
 		overhang = READ_LEN-1,
-		bname = "10_wasp/remap/{SAMPLE}"
+		bname = "09_wasp/remap/{SAMPLE}"
 	conda:
 		"../envs/wasp.yaml"
 	resources:
@@ -51,16 +47,16 @@ rule remap:
 		STAR \
 			--genomeDir {input.starIndex}\
 			--runThreadN {resources.cpu} \
-			--readFilesIn {input.fq1} {input.fq2} \
+			--readFilesIn {input.fq} \
 			--readFilesCommand "gunzip -c" \
 			--sjdbOverhang {params.overhang} \
 			--outSAMtype BAM Unsorted \
 			--twopassMode Basic \
 			--outFileNamePrefix {params.bname}
 
-		mkdir -p 10_wasp/remap/log
-		mv {params.bname}*out 10_wasp/remap/log
-		mv {params.bname}*tab 10_wasp/remap/log
+		mkdir -p 09_wasp/remap/log
+		mv {params.bname}*out 09_wasp/remap/log
+		mv {params.bname}*tab 09_wasp/remap/log
 
 		samtools sort -o {output.remapped_sorted} {output.remapped_unsorted}
 		samtools index {output.remapped_sorted}
@@ -68,11 +64,11 @@ rule remap:
 
 rule filterRemapped:
 	input:
-		to_remap = "10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.to.remap.bam",
-		remapped_unsorted = "10_wasp/remap/{SAMPLE}Aligned.out.bam",
-		remapped_sorted = "10_wasp/remap/{SAMPLE}sorted.out.bam"
+		to_remap = "09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.to.remap.bam",
+		remapped_unsorted = "09_wasp/remap/{SAMPLE}Aligned.out.bam",
+		remapped_sorted = "09_wasp/remap/{SAMPLE}sorted.out.bam"
 	output:
-		keep_filter = temp("10_wasp/filterRemapped/{SAMPLE}.keep.bam")
+		keep_filter = temp("09_wasp/filterRemapped/{SAMPLE}.keep.bam")
 	conda:
 		"../envs/wasp.yaml"
 	resources:
@@ -90,11 +86,12 @@ rule filterRemapped:
 
 rule merge:
 	input:
-		keep_filter = "10_wasp/filterRemapped/{SAMPLE}.keep.bam",
-		keep_intersect = "10_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.keep.bam"
+		keep_filter = "09_wasp/filterRemapped/{SAMPLE}.keep.bam",
+		keep_intersect = "09_wasp/findIntersecting/{SAMPLE}/{SAMPLE}.keep.bam"
 	output:
-		keep_merged = temp("10_wasp/merge/{SAMPLE}.keep.merge.bam"),
-		keep_sorted = temp("10_wasp/merge/{SAMPLE}.keep.merge.sort.bam")
+		keep_merged = temp("09_wasp/merge/{SAMPLE}.keep.merge.bam"),
+		keep_sorted = temp("09_wasp/merge/{SAMPLE}.keep.merge.sort.bam"),
+		keep_sortedIndex = temp("09_wasp/merge/{SAMPLE}.keep.merge.sort.bam.bai")
 	conda:
 		"../envs/wasp.yaml"
 	resources:

@@ -30,5 +30,7 @@ bash/\.*
 *.gds
 *.alleleCounts.tsv
 *.intervals
-13_aseReadCounts/*
 refs/*
+09_wasp/*
+10_aseReadCounter/*
+*.static.tsv
