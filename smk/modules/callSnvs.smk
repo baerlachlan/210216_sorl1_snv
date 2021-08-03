@@ -10,7 +10,7 @@ rule callSnvs:
 		vcf = temp("08_callSnvs/called/{SAMPLE}.vcf.gz"),
 		vcfIndex = temp("08_callSnvs/called/{SAMPLE}.vcf.gz.tbi")
 	params:
-		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
+		metricsBname = "08_callSnvs/called/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -47,13 +47,13 @@ rule filterSnvs:
 		vcf = temp("08_callSnvs/filtered/{SAMPLE}.vcf.gz"),
 		vcfIndex = temp("08_callSnvs/filtered/{SAMPLE}.vcf.gz.tbi")
 	params:
-		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
+		metricsBname = "08_callSnvs/filtered/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 2,
-		mem_mb = 1000,
+		mem_mb = 2000,
 		time = "00-00:30:00"
 	shell:
 		"""
@@ -85,7 +85,7 @@ rule selectSnvs:
 		vcf = "08_callSnvs/selected/{SAMPLE}.vcf.gz",
 		vcfIndex = "08_callSnvs/selected/{SAMPLE}.vcf.gz.tbi"
 	params:
-		metricsBname = "08_callSnvs/{DIR}/log/{SAMPLE}"
+		metricsBname = "08_callSnvs/selected/log/{SAMPLE}"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -100,6 +100,7 @@ rule selectSnvs:
 			-R {input.refFa} \
 			-V {input.vcf} \
 			--select-type-to-include SNP \
+			--restrict-alleles-to BIALLELIC \
 			-O {output.vcf}
 
 		gatk \

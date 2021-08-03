@@ -33,6 +33,7 @@ rule all:
 	input:
 		expand("{DIR}/FastQC/{SAMPLE}_fastqc.{EXT}", DIR = FQC_DIRS, SAMPLE = SAMPLES, EXT = FQC_EXT),
         "02_align/featureCounts/genes.out",
+        expand("08_callSnvs/selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
         expand("11_geneiase/ase/{SAMPLE}.static.pval.tsv", SAMPLE = SAMPLES)
 
 include: "smk/modules/refs.smk"
