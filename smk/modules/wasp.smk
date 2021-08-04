@@ -14,7 +14,7 @@ rule findIntersecting:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 2000,
-		time = "00-08:00:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		python ../packages/WASP/mapping/find_intersecting_snps.py \
@@ -41,7 +41,7 @@ rule remap:
 		cpu = 16,
 		ntasks = 1,
 		mem_mb = 32000,
-		time = "00-04:00:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		STAR \
@@ -75,7 +75,7 @@ rule filterRemapped:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 24000,
-		time = "00-02:00:00"
+		time = "00-00:30:00"
 	shell:
 		"""
 		python ../packages/WASP/mapping/filter_remapped_reads.py \
@@ -98,7 +98,7 @@ rule merge:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 4000,
-		time = "00-02:00:00"
+		time = "00-00:30:00"
 	shell:
 		"""
 		samtools merge {output.keep_merged} \
