@@ -1,0 +1,630 @@
+---
+title: "Allele Specific Expression Analysis"
+author: "Lachlan Baer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE, 
+  fig.align = "center"
+)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+# Setup 
+
+```{r packages}
+suppressPackageStartupMessages({
+  ## Common
+  library(tidyverse)
+  library(magrittr)
+  library(future.apply)
+  library(here)
+  library(AnnotationHub)
+  library(purrr)
+  library(scales)
+  library(kableExtra)
+  library(tictoc)
+  library(ggrepel)
+  library(RColorBrewer)
+  library(ggpubr)
+  library(pander)
+  library(rmarkdown)
+  ## Project specific
+  library(statmod)
+  library(fgsea)
+})
+```
+
+```{r options}
+if (interactive()) setwd(here::here())
+theme_set(theme_bw())
+cores <- availableCores() - 2
+```
+
+```{r}
+source("~/bioinformatics/bioToolkit/lbFuncs.R")
+```
+
+## EnsDb
+
+```{r}
+ah <- AnnotationHub() %>%
+  subset(species == "Danio rerio") %>%
+  subset(rdataclass == "EnsDb")
+ensDb <- ah[["AH83189"]] ## Ens101
+genes <- genes(ensDb)
+mcols(genes) <- mcols(genes)[
+  c("gene_id", "gene_name", "gene_biotype", "entrezid")
+]
+exons <- exonsBy(ensDb, by = "gene")
+```
+
+# Load data
+
+## Metadata
+
+```{r}
+metadata <- read_csv(here("files/SraRunTable.txt")) %>%
+  as.data.frame() %>%
+  dplyr::arrange(Run) %>%
+  mutate(
+    Genotype = factor(Genotype, levels = c(
+      "sorl1R122Pfs/+", "sorl1V1482Afs/+", "sorl1V1482Afs/R122Pfs", "wild-type"
+    )),
+    alias = c(
+      paste0(rep("WT", 8), seq(1, 8)),
+      paste0(rep("V1482Afs", 6), seq(1, 6)),
+      paste0(rep("R122Pfs", 4), seq(1, 4)),
+      paste0(rep("Trans", 6), seq(1, 6))
+    )
+  ) %>%
+  dplyr::select(
+    sample = Run, genotype = Genotype, alias, gender, tank = Tank
+  )
+metadata %>%
+  dplyr::rename(
+    Sample = sample, Genotype = genotype, Alias = alias, Gender = gender,
+    Tank = tank
+  ) %>%
+  kable(
+    align = "l",
+    caption = "Sample metadata"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive")
+  )
+genoCols <- metadata$genotype %>%
+  levels() %>%
+  length() %>%
+  brewer.pal("Set1") %>%
+  setNames(levels(metadata$genotype))
+```
+
+```{r}
+genotypes <- unique(metadata$genotype) %>%
+  as.vector() %>%
+  set_names(., .)
+```
+
+## Differential Expression
+
+```{r}
+# topDE <- readRDS(here("files/toptable_raw.rds")) %>%
+#   set_names(c("fAD", "fAI"))
+```
+
+## GeneiASE
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/11_geneiase/ase",
+  full.names = TRUE
+)
+samples <- basename(files) %>%
+  str_remove(".static.pval.tsv")
+drChrs <- seq(1:25)
+```
+
+```{r}
+topASE <- lapply(files, function(x){
+  sample <- basename(x) %>%
+    str_remove(".static.pval.tsv")
+  read_tsv(x) %>%
+    mutate(
+      sig = fdr < 0.05,
+      sample = sample
+    ) %>%
+    left_join(metadata[,c("sample", "alias", "genotype")]) %>%
+    dplyr::arrange(fdr) %>%
+    mutate(ASE = fdr < 0.05)
+}) %>%
+  set_names(metadata$alias[match(samples, metadata$sample)]) %>%
+  .[metadata$alias]
+```
+
+```{r}
+nASE <- sapply(topASE, function(x){
+  dplyr::filter(x, ASE) %>%
+    nrow()
+})
+```
+
+# Enrichment testing
+
+## Fisher's exact test
+
+```{r}
+chrGenes <- genes %>%
+  as_tibble() %>%
+  dplyr::filter(seqnames %in% drChrs) %>%
+  droplevels() %>%
+  split(.$seqnames) %>%
+  lapply(pull, gene_id) %>%
+  set_names(paste0("chr", names(.)))
+```
+
+```{r}
+chrGenes_df <- chrGenes %>%
+  lapply(list) %>%
+  as_tibble() %>%
+  pivot_longer(cols = everything(), names_to = "chr", values_to= "feat") %>%
+  unnest(feat)
+```
+
+```{r}
+aseByGene <- lapply(topASE, dplyr::filter, ASE) %>%
+  bind_rows() %>%
+  mutate(genoAlias = case_when(
+    str_detect(alias, "fAD") ~ "fAD",
+    str_detect(alias, "fAI") ~ "fAI",
+    str_detect(alias, "wt") ~ "WT",
+  )) %>%
+  group_by(feat, genoAlias) %>%
+  tally() %>%
+  ungroup() %>%
+  pivot_wider(names_from = genoAlias, values_from = n, values_fill = 0) %>%
+  left_join(chrGenes_df)
+```
+
+```{r}
+aseByChr <- sapply(c("fAD", "fAI", "WT"), function(geno){
+  aseByGene %>%
+    dplyr::filter(!!sym(geno) != 0) %>%
+    group_by(chr) %>%
+    tally()
+}, simplify = FALSE)
+```
+
+```{r}
+noAseByGene <- lapply(topASE, dplyr::filter, !ASE) %>%
+  bind_rows() %>%
+  mutate(genoAlias = case_when(
+    str_detect(alias, "fAD") ~ "fAD",
+    str_detect(alias, "fAI") ~ "fAI",
+    str_detect(alias, "wt") ~ "WT",
+  )) %>%
+  group_by(feat, genoAlias) %>%
+  tally() %>%
+  ungroup() %>%
+  pivot_wider(names_from = genoAlias, values_from = n, values_fill = 0) %>%
+  left_join(chrGenes_df)
+```
+
+```{r}
+noAseByChr <- sapply(c("fAD", "fAI", "WT"), function(geno){
+  noAseByGene %>%
+    dplyr::filter(!!sym(geno) != 0) %>%
+    group_by(chr) %>%
+    tally()
+}, simplify = FALSE)
+```
+
+```{r}
+aseTabs <- sapply(aseByChr, function(x){
+  sapply(x$chr, function(y){
+    mutate(x, isChr = chr == y) %>%
+      group_by(isChr) %>%
+      summarise(ase = sum(n))
+  }, simplify = FALSE)
+}, simplify = FALSE)
+
+noAseTabs <- sapply(noAseByChr, function(x){
+  sapply(x$chr, function(y){
+    mutate(x, isChr = chr == y) %>%
+      group_by(isChr) %>%
+      summarise(noAse = sum(n))
+  }, simplify = FALSE)
+}, simplify = FALSE)
+```
+
+```{r}
+fisherTestAse <- function(.x, .y){
+  left_join(.x, .y) %>%
+    column_to_rownames("isChr") %>%
+    as.matrix() %>%
+    fisher.test()
+}
+```
+
+```{r}
+fisherAse <- list(
+  fAD = map2(aseTabs$fAD, noAseTabs$fAD, fisherTestAse),
+  fAI = map2(aseTabs$fAI, noAseTabs$fAI, fisherTestAse),
+  WT = map2(aseTabs$WT, noAseTabs$WT, fisherTestAse)
+)
+```
+
+```{r, fig.height=4}
+lapply(seq_along(fisherAse), function(x){
+  vapply(fisherAse[[x]], function(y){
+    y$p.value
+  }, numeric(1)) %>%
+    enframe(name = "chr", value = "pval") %>%
+    mutate(
+      chr = factor(chr, levels = str_sort(chr, numeric = TRUE)),
+      genotype = factor(genotypes[x]),
+      p.adj = p.adjust(pval, method = "bonf")
+    )
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(chr, -log10(pval), fill = genotype)) +
+  geom_bar(stat = "identity", position = "dodge", colour= "black", width = 0.7) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", ) +
+  scale_fill_manual(values = genoCols) +
+  scale_x_discrete(labels = seq(1:25)) +
+  labs(y = log10plab, x = "Chromosome", fill = "Genotype") +
+  theme(legend.position = "bottom")
+```
+
+
+## Gene Set Enrichment Analysis
+
+### Setup
+
+```{r}
+wilsonConf <- function(p.vals, conf.level = 0.95){
+  p <- mean(p.vals)
+  n <- length(p.vals)
+  alpha <- (1 - conf.level)
+  alpha2 <- alpha / 2
+  z <- qnorm(1 - alpha2)
+  z2 <- z * z
+  p1 <- p + 0.5 * z2/n
+  p2 <- z * sqrt((p * (1 - p) + 0.25 * z2/n)/n)
+  p3 <- 1 + z2/n
+  lcl <- (p1 - p2)/p3
+  ucl <- (p1 + p2)/p3
+  res.wilson <- tibble(
+    mean.p = p,
+    lower = lcl,
+    upper = ucl,
+    n = n,
+    sig = mean.p < alpha
+  )
+  return(res.wilson)
+}
+```
+
+```{r}
+bonfConf <- function(adj.p.val, n, n.bonf, conf.level = 0.95, limit = c("lower", "upper")){
+  alpha <- ((1 - conf.level) / n.bonf)
+  alpha2 <- alpha / 2
+  z <- qnorm(1 - alpha2)
+  z2 <- z * z
+  p1 <- adj.p.val + 0.5 * z2/n
+  p2 <- z * sqrt((adj.p.val * (1 - adj.p.val) + 0.25 * z2/n)/n)
+  p3 <- 1 + z2/n
+  lcl <- (p1 - p2)/p3
+  ucl <- (p1 + p2)/p3
+  if (limit == "lower"){return(lcl)}
+  if (limit == "upper"){return(ucl)}
+}
+```
+
+```{r}
+intSizeByN <- lapply(seq(1:1000), function(n){
+  p <- 0.05
+  alpha <- 1 - p
+  alpha2 <- 0.5 * alpha
+  z <- qnorm(1 - alpha2)
+  z2 <- z * z
+  p1 <- p + 0.5 * z2/n
+  p2 <- z * sqrt((p * (1 - p) + 0.25 * z2/n)/n)
+  p3 <- 1 + z2/n
+  lcl <- (p1 - p2)/p3
+  ucl <- (p1 + p2)/p3
+  res.wilson <- tibble(
+    p = p,
+    n = n,
+    lower = lcl,
+    upper = ucl
+  )
+  return(res.wilson)
+})
+intSizeByN %>%
+  bind_rows() %>%
+  mutate(size = upper - lower) %>%
+  ggplot(aes(n, size)) +
+  geom_line() +
+  labs(y = "Wilson interval size") +
+  scale_y_continuous(breaks = seq(0, 0.03, by = 0.001)) +
+  scale_x_continuous(breaks = seq(0, 1000, by = 100))
+```
+
+### Non-directional
+
+```{r}
+permRanks_nd <- function(topASE){
+  topASE[,c("feat", "fdr")] %>%
+    mutate(
+      fdr = ifelse(fdr == 0, 0.000001, fdr),
+      stat = -log10(fdr)
+    ) %>%
+    split(f = .$stat) %>%
+    lapply(function(x){
+      pull(x, feat) %>%
+        sample(length(.), replace = FALSE)
+    }) %>%
+    unlist(use.names = FALSE) %>%
+    enframe(name = NULL, value = "geneid") %>%
+    mutate(stat = seq(1:nrow(.))) %>%
+    with(structure(stat, names = geneid)) %>%
+    rev()
+}
+```
+
+```{r}
+perms <- 500
+file_nd <- paste0(
+  "/hpcfs/users/a1647910/210408_psen1_fADfAI_snv",
+  "/files/fgsea_nd_",
+  perms,
+  "perms.Rds"
+)
+```
+
+```{r}
+## This code chunk has a lengthy run-time and will not run if the object has already been saved
+## Due to its large size the object remains on the HPC system
+## Across 6 threads it takes 1-2 hours to complete
+if (!file.exists(file_nd)) {
+  plan(list(tweak(multisession, workers = cores), sequential))
+  ranks_nd <- future_sapply(1:perms, function(...){
+    future_sapply(topASE, permRanks_nd, future.seed = 17)
+  }, future.seed = 17) %>%
+    t() %>%
+    as_tibble()
+  fgsea_nd <- future_lapply(as.list(ranks_nd), function(x){
+    future_lapply(x, function(y){
+      fgseaMultilevel(chrGenes, y, scoreType = "pos", eps = 0)
+    }, future.seed = 17)
+  }, future.seed = 17) %>%
+    set_names(colnames(ranks_nd))
+  saveRDS(fgsea_nd, file_nd)
+  plan(sequential)
+}
+```
+
+```{r}
+fgsea_nd <- readRDS(file_nd)
+```
+
+```{r}
+pvals_nd <- lapply(fgsea_nd, function(x){
+  lapply(seq_along(x), function(y){
+    x[[y]][,c("pathway", "padj")] %>%
+      dplyr::rename(!!as.character(y) := padj)
+  }) %>%
+    purrr::reduce(left_join) %>%
+    column_to_rownames("pathway") %>%
+    t() %>%
+    as_tibble()
+})
+```
+
+```{r}
+mean_nd <- lapply(pvals_nd, function(sample){
+  chrList <- as.list(sample)
+  lapply(seq_along(chrList), function(x){
+    chr <- names(chrList)[x]
+    wilsonConf(chrList[[x]]) %>%
+      mutate(chromosome = as.factor(chr))
+  }) %>%
+    bind_rows() %>%
+    dplyr::select(chromosome, everything()) %>%
+    mutate(
+      adj.mean.p = p.adjust(mean.p, method = "bonf"),
+      adj.lower = bonfConf(adj.mean.p, n, length(adj.mean.p), limit = "lower"),
+      adj.upper = bonfConf(adj.mean.p, n, length(adj.mean.p), limit = "upper")
+    )
+}) 
+```
+
+```{r, fig.height=7.5}
+lapply(seq_along(mean_nd), function(ind){
+  x <- mean_nd[[ind]]
+  x %>%
+    mutate(
+      sample = names(mean_nd)[ind],
+      chromosome = fct_relevel(chromosome, str_sort(chromosome, numeric = TRUE))
+    )
+}) %>%
+  bind_rows() %>%
+  left_join(metadata[,c("alias", "genotype")], by = c("sample" = "alias")) %>%
+  ggplot(aes(sample, -log10(adj.mean.p))) +
+  geom_bar(stat = "identity", aes(fill = genotype)) +
+  geom_errorbar(aes(
+    ymax = -log10(adj.lower),
+    ymin = -log10(adj.upper)
+  ), width = 0.2) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  facet_wrap(~ chromosome) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "bottom"
+  ) +
+  scale_fill_manual(values = genoCols) +
+  labs(y = log10plab)
+```
+
+### Directional
+
+```{r}
+permRanks_d <- function(topASE){
+  geno <- unique(topASE$alias)
+  if (str_detect(geno, "fAD")) {
+    dat <- topASE[,c("feat", "fdr")] %>%
+      left_join(
+        topDE$fAD[,c("gene_id", "logFC")],
+        by = c("feat" = "gene_id")
+      )
+  }
+  if (str_detect(geno, "fAI")) {
+    dat <- topASE[,c("feat", "fdr")] %>%
+      left_join(
+        topDE$fAI[,c("gene_id", "logFC")],
+        by = c("feat" = "gene_id")
+      )
+  }
+  dat %>%
+    mutate(
+      fdr = ifelse(fdr == 0, 0.000001, fdr),
+      stat = sign(logFC) * -log10(fdr)
+    ) %>%
+    dplyr::arrange(stat) %>%
+    split(f = .$stat) %>%
+    lapply(function(x){
+      pull(x, feat) %>%
+        sample(length(.), replace = FALSE)
+    }) %>%
+    unlist(use.names = FALSE) %>%
+    enframe(name = NULL, value = "geneid") %>%
+    mutate(stat = seq(1:nrow(.))) %>%
+    with(structure(stat, names = geneid)) %>%
+    rev()
+}
+```
+
+```{r}
+perms <- 500
+file_d <- paste0(
+  "/hpcfs/users/a1647910/210408_psen1_fADfAI_snv",
+  "/files/fgsea_d_",
+  perms,
+  "perms.Rds"
+)
+```
+
+```{r}
+## This code chunk has a lengthy run-time and will not run if the object has already been saved
+## Due to its large size the object remains on the HPC system
+## Across 6 threads it takes 1-2 hours to complete
+if (!file.exists(file_d)) {
+  plan(list(tweak(multisession, workers = 6), sequential))
+  ranks_d <- future_sapply(1:perms, function(...){
+    future_sapply(
+      topASE[str_detect(names(topASE), "(fAD|fAI)")],
+      permRanks_d,
+      future.seed = 17
+    )
+  }, future.seed = 17) %>%
+    t() %>%
+    as_tibble()
+  fgsea_d <- future_lapply(as.list(ranks_d), function(x){
+    future_lapply(x, function(y){
+      fgseaMultilevel(chrGenes, y, scoreType = "pos", eps = 0)
+    }, future.seed = 17)
+  }, future.seed = 17) %>%
+    set_names(colnames(ranks_d))
+  saveRDS(fgsea_d, file_d)
+  plan(sequential)
+}
+```
+
+```{r}
+fgsea_d <- readRDS(file_d)
+```
+
+```{r}
+pvals_d <- lapply(fgsea_d, function(x){
+  lapply(seq_along(x), function(y){
+    x[[y]][,c("pathway", "padj")] %>%
+      dplyr::rename(!!as.character(y) := padj)
+  }) %>%
+    purrr::reduce(left_join) %>%
+    column_to_rownames("pathway") %>%
+    t() %>%
+    as_tibble()
+})
+```
+
+```{r}
+mean_d <- lapply(pvals_d, function(sample){
+  chrList <- as.list(sample)
+  lapply(seq_along(chrList), function(x){
+    chr <- names(chrList)[x]
+    wilsonConf(chrList[[x]]) %>%
+      mutate(chromosome = as.factor(chr))
+  }) %>%
+    bind_rows() %>%
+    dplyr::select(chromosome, everything()) %>%
+    mutate(
+      adj.mean.p = p.adjust(mean.p, method = "bonf"),
+      adj.lower = bonfConf(adj.mean.p, n, length(adj.mean.p), limit = "lower"),
+      adj.upper = bonfConf(adj.mean.p, n, length(adj.mean.p), limit = "upper")
+    )
+}) 
+```
+
+```{r, fig.height=7.5}
+lapply(seq_along(mean_d), function(ind){
+  x <- mean_d[[ind]]
+  x %>%
+    mutate(
+      sample = names(mean_d)[ind],
+      chromosome = fct_relevel(chromosome, str_sort(chromosome, numeric = TRUE))
+    )
+}) %>%
+  bind_rows() %>%
+  left_join(metadata[,c("alias", "genotype")], by = c("sample" = "alias")) %>%
+  ggplot(aes(sample, -log10(adj.mean.p))) +
+  geom_bar(stat = "identity", aes(fill = genotype)) +
+  geom_errorbar(aes(
+    ymax = -log10(adj.lower),
+    ymin = -log10(adj.upper)
+  ), width = 0.2) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  facet_wrap(~ chromosome) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "bottom"
+  ) +
+  scale_fill_manual(values = compCols) +
+  labs(y = log10plab)
+```
+
+```{r}
+sessionInfo() %>%
+  pander()
+```
+
