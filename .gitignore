@@ -17,7 +17,6 @@
 *kallisto_index*
 *abundance.tsv
 *cache*
-*_files*
 *DS_Store*
 ._.gitignore
 .RData
