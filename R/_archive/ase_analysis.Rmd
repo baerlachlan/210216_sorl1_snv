@@ -133,7 +133,7 @@ genotypes <- unique(metadata$genotype) %>%
 
 ```{r}
 files <- list.files(
-  "/hpcfs/users/a1647910/210216_sorl1_snv/11_geneiase/ase",
+  "/hpcfs/users/a1647910/210216_sorl1_snv/11_geneiase/2_ase",
   full.names = TRUE
 )
 samples <- basename(files) %>%
