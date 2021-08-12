@@ -1,4 +1,4 @@
-*tar
+'*tar
 *tar.gz
 *fq.gz
 *fa.gz
@@ -30,6 +30,7 @@ bash/\.*
 *.gds
 *.alleleCounts.tsv
 *.intervals
+*.bed
 refs/*
 09_wasp/*
 10_aseReadCounter/*

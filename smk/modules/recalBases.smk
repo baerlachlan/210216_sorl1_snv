@@ -1,14 +1,14 @@
-rule recalBases:
+rule recalFirstPass:
 	input:
 		bam = "05_addRG/bam/{SAMPLE}.bam",
 		bamIndex = "05_addRG/bam/{SAMPLE}.bai",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
-		dbsnp = "06_knownSnvs/filtered/{SAMPLE}.vcf.gz",
-		dbsnpIndex = "06_knownSnvs/filtered/{SAMPLE}.vcf.gz.tbi"
+		snvs = "06_dbsnp/4_selected/{SAMPLE}_snvs.vcf.gz",
+		indels = "06_dbsnp/4_selected/{SAMPLE}_indels.vcf.gz"
 	output:
-		temp("07_recalBases/recal/{SAMPLE}_recal")
+		temp("07_recalBases/recal/{SAMPLE}.firstPass.table")
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -24,9 +24,9 @@ rule recalBases:
             BaseRecalibrator \
             -R {input.refFa} \
             -I {input.bam} \
-            --use-original-qualities \
             -O {output} \
-            -known-sites {input.dbsnp}
+            --known-sites {input.snvs} \
+            --known-sites {input.indels}
 		"""
 
 rule applyRecal:
@@ -36,7 +36,7 @@ rule applyRecal:
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
-		recal = "07_recalBases/recal/{SAMPLE}_recal"
+		recal = "07_recalBases/recal/{SAMPLE}.firstPass.table"
 	output:
 		bam = "07_recalBases/bam/{SAMPLE}.bam",
 		bamIndex = "07_recalBases/bam/{SAMPLE}.bai"
@@ -57,25 +57,75 @@ rule applyRecal:
             --add-output-sam-program-record \
             -R {input.refFa} \
             -I {input.bam} \
-            --use-original-qualities \
             -O {output.bam} \
             --bqsr-recal-file {input.recal}
 		"""
 
-rule fastqc_recalBases:
+rule recalSecondPass:
 	input:
-		"07_recalBases/bam/{SAMPLE}.bam"
+		bam = "07_recalBases/bam/{SAMPLE}.bam",
+		bamIndex = "07_recalBases/bam/{SAMPLE}.bai",
+		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
+		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
+		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
+		snvs = "06_dbsnp/4_selected/{SAMPLE}_snvs.vcf.gz",
+		indels = "06_dbsnp/4_selected/{SAMPLE}_indels.vcf.gz"
 	output:
-		"07_recalBases/FastQC/{SAMPLE}_fastqc.zip",
-		"07_recalBases/FastQC/{SAMPLE}_fastqc.html"
-	params:
-		outDir = "07_recalBases/FastQC/"
+		temp("07_recalBases/recal/{SAMPLE}.secondPass.table")
+	conda:
+		"../envs/ase.yaml"
+	resources:
+		cpu = 1,
+		ntasks = 1,
+		mem_mb = 4000,
+		time = "00-01:00:00"
+	shell:
+		"""
+		gatk --java-options "-XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+PrintFlagsFinal \
+            -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails \
+            -Xloggc:gc_log.log -Xms4000m" \
+            BaseRecalibrator \
+            -R {input.refFa} \
+            -I {input.bam} \
+            -O {output} \
+            --known-sites {input.snvs} \
+            --known-sites {input.indels}
+		"""
+
+rule analyzeCovariates:
+	input:
+		firstPass = "07_recalBases/recal/{SAMPLE}.firstPass.table",
+		secondPass = "07_recalBases/recal/{SAMPLE}.secondPass.table"
+	output:
+		csv = "07_recalBases/recal/{SAMPLE}.analyzeCovariates.csv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 2000,
-		time = "00-01:00:00"
+		time = "00-00:10:00"
 	shell:
-		"fastqc -t {resources.cpu} -o {params.outDir} --noextract {input}"
+		"""
+		gatk AnalyzeCovariates \
+			-before {input.firstPass} \
+     		-after {input.secondPass} \
+     		-csv {output.csv}
+		"""
+
+rule applyRecal_metrics:
+	input:
+		bam = "07_recalBases/bam/{SAMPLE}.bam"
+	output:
+		metrics = "07_recalBases/metrics/{SAMPLE}.tsv"
+	conda:
+		"../envs/ase.yaml"
+	resources:
+		cpu = 1,
+		ntasks = 1,
+		mem_mb = 4000,
+		time = "00-00:10:00"
+	shell:
+		"""
+		samtools stats -d {input.bam} > {output.metrics}
+		"""

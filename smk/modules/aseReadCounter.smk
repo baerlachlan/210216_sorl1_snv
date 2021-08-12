@@ -1,8 +1,8 @@
 rule aseRC:
 	input:
-		bam = "09_wasp/merge/{SAMPLE}.keep.merge.sort.bam",
-		bamIndex = "09_wasp/merge/{SAMPLE}.keep.merge.sort.bam.bai",
-		vcf = "08_callSnvs/selected/{SAMPLE}.vcf.gz",
+		bam = "09_wasp/5_merge/{SAMPLE}.keep.merge.sort.bam",
+		bamIndex = "09_wasp/5_merge/{SAMPLE}.keep.merge.sort.bam.bai",
+		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		intervals = "08_callSnvs/intervals/exons.intervals"
 	output:
@@ -13,7 +13,7 @@ rule aseRC:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 4000,
-		time = "00-00:30:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		gatk \
@@ -31,7 +31,7 @@ rule aseRC_nowasp:
 	input:
 		bam = "07_recalBases/bam/{SAMPLE}.bam",
 		bamIndex = "07_recalBases/bam/{SAMPLE}.bai",
-		vcf = "08_callSnvs/selected/{SAMPLE}.vcf.gz",
+		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		intervals = "08_callSnvs/intervals/exons.intervals"
 	output:
@@ -42,7 +42,7 @@ rule aseRC_nowasp:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 4000,
-		time = "00-00:30:00"
+		time = "00-01:00:00"
 	shell:
 		"""
 		gatk \

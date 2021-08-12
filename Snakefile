@@ -21,7 +21,7 @@ SAMPLES = [
     "SRR11951246", "SRR11951247", "SRR11951248", "SRR11951249", "SRR11951250", "SRR11951251"
 ]
 REF_EXT = ["dict", "fa.fai"]
-FQC_DIRS = ["00_rawData", "01_trim", "02_align", "07_recalBases"]
+FQC_DIRS = ["00_rawData", "01_trim", "02_align"]
 FQC_EXT = ["zip", "html"]
 VCF_EXT = ["vcf.gz", "vcf.gz.tbi"]
 
@@ -33,9 +33,13 @@ rule all:
 	input:
 		expand("{DIR}/FastQC/{SAMPLE}_fastqc.{EXT}", DIR = FQC_DIRS, SAMPLE = SAMPLES, EXT = FQC_EXT),
         "02_align/featureCounts/genes.out",
-        expand("08_callSnvs/selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
+        expand("02_align/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
+        expand("05_addRG/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
+        expand("07_recalBases/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
+        expand("07_recalBases/recal/{SAMPLE}.analyzeCovariates.csv", SAMPLE = SAMPLES),
+        expand("08_callSnvs/4_selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
         expand("10_aseReadCounter/{DIR}/{SAMPLE}.tsv", DIR = ["wasp", "nowasp"], SAMPLE = SAMPLES),
-        expand("11_geneiase/ase/{SAMPLE}.static.pval.tsv", SAMPLE = SAMPLES)
+        expand("11_geneiase/2_ase/{SAMPLE}.static.pval.tsv", SAMPLE = SAMPLES)
 
 include: "smk/modules/refs.smk"
 include: "smk/modules/fastqc_raw.smk"
@@ -45,7 +49,7 @@ include: "smk/modules/featureCounts.smk"
 include: "smk/modules/markDuplicates.smk"
 include: "smk/modules/splitNCigar.smk"
 include: "smk/modules/addRG.smk"
-include: "smk/modules/knownSnvs.smk"
+include: "smk/modules/dbsnp.smk"
 include: "smk/modules/recalBases.smk"
 include: "smk/modules/callSnvs.smk"
 include: "smk/modules/wasp.smk"
