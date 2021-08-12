@@ -188,7 +188,7 @@ After trimming between `r pander(range(percent_format(0.01)(trimStats$Discarded)
 ### Aligned data
 
 Trimmed reads were aligned to GRCz11 reference genome (Ensembl release 101) with `STAR 2.7.7a`.
-`STAR`'s two-pass mode was chosen to achieve better alignments around novel splice junctions.
+`STAR`'s two-pass mode was implemented to achieve better alignments around novel splice junctions.
 
 # GATK short variant discovery
 
@@ -219,8 +219,205 @@ dupeMetrics <- list.files(here("03_markDuplicates/log/"), full.names = TRUE) %>%
 ```
 
 Between `r pander(range(percent_format(0.01)(dupeMetrics$percent.duplication)))` of reads were marked as duplicates across all samples.
-These large proportions are likely due to the conservative nature of the duplicate detection strategy.
-Additionally, this dataset consists of single-end reads, and therefore the software can only classify dulplicates based on a single sequence.
+These large proportions were noted as a concern for downstream processing due to a substantial loss of information when duplicates are excluded.
+Such large estimates are likely due to the conservative nature of the duplicate detection strategy, which is hard to avoid when a dataset consists of single-end reads, and therefore the software can only classify dulplicates based on a single position.
+
+### Base quality score recalibration
+
+Base quality score recalibration (BQSR) is a recommended technique in the `GATK` workflow which is used to assign accurate confidence scores to each sequenced base.
+Real data contains systematic biases due to artifacts of sample preparation, sequencing and mapping.
+BQSR aims to correct for the range of these types of artifacts, as downstream tools rely on base qualities to weigh the variant calls they make.
+The process involves two keys steps performed by tools `BaseRecalibrator` and `ApplyBQSR`in the `GATK` suite.
+
+**BaseRecalibrator**
+
+`BaseRecalibrator` builds a model of covariation based on the input data and a set of known variants.
+Since this dataset originates from zebrafish which are highly polymorphic, the set of known variants was generated directly from the data as opposed to obtaining it from an online database.
+Details about this procedure are described [here](https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR-).
+`BaseRecalibrator` records data about the following features of aligned bases:
+
+- Read group
+- Quality score
+- Machine cycle producing the base (Nth cycle = Nth base from the start of the read)
+- Dinucleotide context (current base + previous base)
+
+For each bin, the number of bases and how often such bases mistmatch the reference are counted and exported as a recalibration report.
+
+**ApplyBQSR**
+
+`ApplyBQSR` uses the recalibration file to go through the reads and adjust each base's score based on what bins it falls in.
+The new quality score is effectively determined by:
+
+- The sum of the global difference between reported quality scores and the empirical quality
+- Plus the quality bin specific shift
+- Plus the cycle x quality and dinucleotide x quality effect
+
+Recalibration should cause the read quality scores to match their empirical scores much closer than before.
+This allows for more statistically robust downstream variant calling.
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/05_addRG/metrics",
+  full.names = TRUE
+)
+beforeRecalMetrics <- lapply(files, read_lines) %>%
+  set_names(str_remove(basename(files), ".tsv"))
+beforeRecalSummary <- map2(beforeRecalMetrics, files, function(.x, .y){
+  grep("^SN", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[, 2:3] %>%
+    set_colnames(c("metric", "value")) %>%
+    as_tibble() %>%
+    mutate(metric = str_remove(metric, ":$")) %>%
+    pivot_wider(names_from = "metric", values_from = "value") %>%
+    mutate(
+      across(everything(), as.numeric),
+      sample = str_remove(basename(.y), ".tsv")
+    )
+}) %>%
+  bind_rows()
+beforeRecalQuality <- map2(beforeRecalMetrics, files, function(.x, .y){
+  grep("^FFQ", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[,-1] %>%
+    set_colnames(c("cycle", paste0("BQ", seq(0, ncol(.) - 2)))) %>%
+    as_tibble() %>%
+    mutate(across(everything(), as.numeric)) %>%
+    .[, colSums(.) != 0] %>%
+    mutate(
+      cycle = as.factor(cycle),
+      sample = str_remove(basename(.y), ".tsv")
+    ) 
+})
+```
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/metrics",
+  full.names = TRUE
+)
+afterRecalMetrics <- lapply(files, read_lines) %>%
+  set_names(str_remove(basename(files), ".tsv"))
+afterRecalSummary <- map2(afterRecalMetrics, files, function(.x, .y){
+  grep("^SN", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[, 2:3] %>%
+    set_colnames(c("metric", "value")) %>%
+    as_tibble() %>%
+    mutate(metric = str_remove(metric, ":$")) %>%
+    pivot_wider(names_from = "metric", values_from = "value") %>%
+    mutate(
+      across(everything(), as.numeric),
+      sample = str_remove(basename(.y), ".tsv")
+    )
+}) %>%
+  bind_rows()
+afterRecalQuality <- map2(afterRecalMetrics, files, function(.x, .y){
+  grep("^FFQ", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[,-1] %>%
+    set_colnames(c("cycle", paste0("BQ", seq(0, ncol(.) - 2)))) %>%
+    as_tibble() %>%
+    mutate(across(everything(), as.numeric)) %>%
+    .[, colSums(.) != 0] %>%
+    mutate(
+      cycle = as.factor(cycle),
+      sample = str_remove(basename(.y), ".tsv")
+    ) 
+})
+```
+
+For successful recalibration it is critical that each read group (sample in this case) has more than 100 million aligned bases.
+For this dataset the number of aligned bases ranged between `r pander(comma(range(pull(beforeRecalSummary, "bases mapped (cigar)"))))` across all samples, and therefore base recalibration was performed.
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/recal",
+  pattern = "analyzeCovariates",
+  full.names = TRUE
+)
+recalCovariates <- lapply(files, function(x){
+  read_csv(x) %>%
+    mutate(sample = str_remove(basename(x), ".analyzeCovariates.csv"))
+})
+```
+
+To assess whether base recalibration was successful, base qualities were assessed before and after recalibration.
+As all samples showed similar profiles, a representative sample for each genotype is shown below.
+
+```{r, fig.height=4, fig.cap="*Reported base quality plotted against empirical quality. Base qualities before recalibration showed patterns of over-estimation by the sequencer. Post-recalibration quality scores fitted the empirically derived quality scores better than pre-recalibration. Additionally a greater distribution of quality scores was observed after recalibration procedures.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "QualityScore") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(facet = paste(sample, "-", genotype))
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(AverageReportedQuality, EmpiricalQuality)) +
+  geom_point(aes(colour = Recalibration), alpha = 0.7) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) + 
+  xlab("Reported Quality Score") +
+  ylab("Empirical Quality Score") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7)
+  )
+```
+
+```{r, fig.height=4, fig.cap="*Residual error by machine cycle. Observations before recalibration are coloured pink and after recalibration are blue. Most cycles showed an overestimation of base qualities which was improved after recalibration.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "Cycle") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(
+      CovariateValue = factor(CovariateValue, levels = unique(CovariateValue)),
+      facet = paste(sample, "-", genotype)
+    )
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(CovariateValue, Accuracy)) +
+  geom_point(aes(colour = Recalibration), alpha = 0.7)+
+  geom_abline(intercept = 0, slope = 0, linetype = 2) + 
+  xlab("Machine Cycle") +
+  ylab("Quality Score Accuracy (Empirical - Reported)") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  scale_x_discrete(breaks = seq(0, 100, 5)) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7),
+    axis.text.x = element_text(size = 6, angle = 270, hjust = 0)
+  )
+```
+
+```{r, fig.height=4, fig.cap="*Residual error by dinucleotide. Observations before recalibration are coloured pink and after recalibration are blue. Dinucleotide contexts showed over-estimation of base qualities pre-recalibration but were substantially improved after recalibration.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "Context") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(
+      CovariateValue = factor(CovariateValue, levels = unique(CovariateValue)),
+      facet = paste(sample, "-", genotype)
+    )
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(CovariateValue, Accuracy, colour = Recalibration)) +
+  geom_point(alpha = 0.7, shape = "\U2012", size = 5)+
+  geom_abline(intercept = 0, slope = 0, linetype = 2) + 
+  xlab("Dinucleotide") +
+  ylab("Quality Score Accuracy (Empirical - Reported)") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7),
+    axis.text.x = element_text(size = 6, angle = 270, hjust = 0)
+  )
+```
 
 ### Genomic location
 
@@ -248,7 +445,9 @@ exonRanges <- exons %>%
 intervalPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/intervals/exons.intervals"
 makeIntervals <- !file.exists(intervalPath)
 if (makeIntervals) {
-  dir.create(dirname(intervalPath), recursive = TRUE)
+  if (!dir.exists(dirname(intervalPath))) {
+    dir.create(dirname(intervalPath), recursive = TRUE)
+  }
   tibble(
     interval = paste0(
       exonRanges$chromosome,
@@ -267,12 +466,68 @@ if (makeIntervals) {
 }
 ```
 
+The intervals were also exported as a `BED` file as some software prefer this format.
+
+```{r}
+bedPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/intervals/exons.bed"
+makeBed <- !file.exists(bedPath)
+if (makeBed) {
+  if (!dir.exists(dirname(bedPath))) {
+    dir.create(dirname(bedPath), recursive = TRUE)
+  }
+  tibble(
+    seqnames = exonRanges$chromosome,
+    start = exonRanges$start,
+    end = exonRanges$end
+  ) %>%
+    write.table(
+      file = bedPath,
+      quote = FALSE,
+      sep = "\t",
+      col.names = FALSE,
+      row.names = FALSE
+    )
+}
+```
+
 ### Variant calling
+
+With the to perform downstream ASE analysis, initial variants were restricted to only biallelic SNVs.
+Additionally, for RNA-seq data, `GATK` recommends [specific hard filters](https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants).
+Variants were removed with the following filters:
+
+- QualByDepth: QD < 2.0 
+    - Variant confidence (QUAL field) divided by the unfiltered depth of non-homozygous reference samples.
+    Removing variants that have a low QD normalises the variant quality and avoids inflation caused by deep coverage.
+- FisherStrand: FS > 60.0
+    - The Phred-scaled probability there there is strand bias at the site.
+    Strand bias indicates whether the alternate allele was seen more or less often on the forward or reverse strand than the reference allele.
+    When there is little to no strand bias at the site, the FS value is close to 0.
+- StrandOddsRatio: SOR > 4.0
+    - An alternative way to estimate strand bias using a test similar to the symmetric odds ratio test.
+- RMSMappingQuality: MQ < 40.0
+    - Root mean square mapping quality over all the reads at the site.
+- MappingQualityRankSumTest: MQRankSum < -12.5
+    - u-based z-approximation from the Rank Sum Test for mapping qualities.
+    This compares the mapping qualities of the reads supporting the reference allele and the alternate allele.
+- ReadPosRankSumTest: ReadPosRankSum < -8.0
+    - u-based z-approximation from the Rank Sum Test for site position within reads.
+    This compares whether the positions of the reference and alternate alleles are different within the reads.
 
 ```{r}
 calledMetrics <- list.files(
-  # path = here("08_callSnvs/called/log/"),
-  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/called/log/",
+  # path = here("08_callSnvs/1_called/log/"),
+  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/1_called/log/",
+  pattern = "detail",
+  full.names = TRUE
+) %>%
+  lapply(read_tsv, comment = "#") %>%
+  bind_rows() %>%
+  dplyr::select(-contains(c("DBSNP", "DB_SNP", "NOVEL"))) %>%
+  as.data.frame()
+extractedMetrics <- list.files(
+  # path = here("08_callSnvs/2_extracted/log/"),
+  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/2_extracted/log/",
   pattern = "detail",
   full.names = TRUE
 ) %>%
@@ -281,8 +536,8 @@ calledMetrics <- list.files(
   dplyr::select(-contains(c("DBSNP", "DB_SNP", "NOVEL"))) %>%
   as.data.frame()
 filteredMetrics <- list.files(
-  # path = here("08_callSnvs/filtered/log/"),
-  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/filtered/log/",
+  # path = here("08_callSnvs/3_filtered/log/"),
+  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/3_filtered/log/",
   pattern = "detail",
   full.names = TRUE
 ) %>%
@@ -291,8 +546,8 @@ filteredMetrics <- list.files(
   dplyr::select(-contains(c("DBSNP", "DB_SNP", "NOVEL"))) %>%
   as.data.frame()
 selectedMetrics <- list.files(
-  # path = here("08_callSnvs/selected/log/"),
-  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/selected/log/",
+  # path = here("08_callSnvs/4_selected/log/"),
+  path = "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/4_selected/log/",
   pattern = "detail",
   full.names = TRUE
 ) %>%
@@ -308,17 +563,11 @@ filtProgress <- calledMetrics %>%
   dplyr::select(sample = SAMPLE_ALIAS, initial = TOTAL_SNPS)
 filtProgress <- selectedMetrics %>%
   as_tibble() %>%
-  dplyr::select(sample = SAMPLE_ALIAS, biallelic = TOTAL_SNPS) %>%
+  dplyr::select(sample = SAMPLE_ALIAS, GATK = TOTAL_SNPS) %>%
   left_join(filtProgress)
 ```
 
-`GATK`'s initial variant calling output provides a number of different types of variants, for example indels, single nucleotide and multi nucleotide variants.
-The total number of all types of variants ranges between `r pander(range(filtProgress$initial))`.
-
-It is recommended that only single nucleotide variants (SNVs) are used for ASE analysis.
-Furthermore, only biallelic SNVs are informative for estimating allelic proportions in terms of ASE.
-A filter was applied such that only biallelic SNVs remained for ASE analysis.
-The number of biallelic SNVs ready for ASE analysis ranged between `r pander(range(filtProgress$biallelic))`.
+After `GATK` recommended hard filters were applied thhe number of biallelic SNVs ready for ASE analysis ranged between `r pander(comma(range(filtProgress$GATK)))`.
 
 # Allele Specific Expression
 
@@ -330,14 +579,14 @@ To gather SNV information as determined by the `GATK` workflow, `VCF` files were
 
 ```{r, results='hide'}
 vcfPaths <- list.files(
-  "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/selected",
+  "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/4_selected",
   pattern = ".vcf.gz$",
   full.names = TRUE
 )
 lapply(vcfPaths, function(vcf){
   gdsPath <- paste0(
-    str_remove(dirname(vcf), "selected"),
-    "gds/",
+    str_remove(dirname(vcf), "4_selected"),
+    "5_gds/",
     str_remove(basename(vcf), ".vcf.gz"),
     ".gds"
   )
@@ -352,7 +601,7 @@ lapply(vcfPaths, function(vcf){
 
 ```{r}
 gdsPaths <- list.files(
-  "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/gds",
+  "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/5_gds",
   pattern = ".gds$",
   full.names = TRUE
 )
@@ -413,7 +662,7 @@ lapply(snvList, function(x){
     chr <- unique(x$chromosome)
     sample <- unique(x$sample)
     path <- paste0(
-      "/hpcfs/users/a1647910/210216_sorl1_snv/09_wasp/snvs/",
+      "/hpcfs/users/a1647910/210216_sorl1_snv/09_wasp/1_snvs/",
       sample,
       "/",
       chr,
@@ -704,7 +953,7 @@ filtProgress <- list(
 
 `WASP` filtering is designed to remove the vast majority of reads with mapping bias.
 Reference allele ratios were calculated for all SNVs passing filtering procedures with and without `WASP` filtering, to determine the effectiveness of `WASP`.
-A residual mapping bias is indicated by a large deviation in reference allele ratios from 0.5.
+A residual mapping bias is indicated if reference allele ratios tend to deviate from 0.5.
 
 ```{r}
 refRatios_nowasp <- lapply(aseRC_nowasp, function(x){
@@ -712,11 +961,12 @@ refRatios_nowasp <- lapply(aseRC_nowasp, function(x){
     dplyr::filter(totalCount != 0) %>%
     mutate(
       refRatio = refCount / totalCount,
-      altRatio = altCount / totalCount
+      altRatio = altCount / totalCount,
+      WASP = FALSE
     ) %>%
     dplyr::select(
       chromosome, position, allele, refRatio, altRatio, totalCount,
-      sample, genotype
+      sample, genotype, WASP
     )
 }) %>%
   bind_rows()
@@ -728,11 +978,12 @@ refRatios_wasp <- lapply(aseRC_wasp, function(x){
     dplyr::filter(totalCount != 0) %>%
     mutate(
       refRatio = refCount / totalCount,
-      altRatio = altCount / totalCount
+      altRatio = altCount / totalCount,
+      WASP = TRUE
     ) %>%
     dplyr::select(
       chromosome, position, allele, refRatio, altRatio, totalCount,
-      sample, genotype
+      sample, genotype, WASP
     )
 }) %>%
   bind_rows()
@@ -791,7 +1042,7 @@ refRatios_nowasp %>%
   ggtitle(label = "Reference allele ratios without WASP filtering")
 ```
 
-```{r, fig.cap="*Boxplots showing reference allele ratios for remaining SNVs when WASP filtering was incorporated into the quality control procedure. The mean reference ratio for each sample is indicated with a white dash, while the solid black line indicates a reference ratio of 0.5. Outliers are hidden for the ease of viewing. Residual reference mapping bias remains in the data, however there appears to be an improvement over data that was not subject to WASP filtering.*"}
+```{r, fig.cap="*Boxplots showing reference allele ratios for remaining SNVs when WASP filtering was incorporated into the quality control procedure. The mean reference ratio for each sample is indicated with a white dash, while the solid black line indicates a reference ratio of 0.5. Outliers are hidden for the ease of viewing. Reference mapping bias was eliminated in WASP filtered data and presents a significant improvement over data that was not subject to WASP.*"}
 refRatios_wasp %>%
   dplyr::filter(totalCount >= 10) %>%
   left_join(metadata[,c("sample", "genotype")]) %>%
@@ -813,8 +1064,7 @@ refRatios_wasp %>%
   ) +
   ggtitle(label = "Reference allele ratios with WASP filtering")
 ```
-
-Whilst not perfect, `WASP` filtering improved the reference allele mapping bias and therefore was `WASP` filtered data chosen for ASE testing.
+`WASP` filtering significantly improved the reference allele mapping bias and therefore `WASP` filtered data was chosen for ASE testing.
 
 ```{r}
 aseRC <- aseRC_wasp
@@ -839,10 +1089,10 @@ The mean reference ratios for each sample will be used as the null in statistica
 
 ### Filtering
 
-```{r, fig.cap="*Boxplots of the total number of SNVs remaining in each sample after various quality control filtering steps. The filters were applied sequentially from left to right across the x-axis, and as such the remaining number of SNVs follows a decreasing trend.*"}
+```{r, fig.cap="*Boxplots of the total number of SNVs remaining in each sample after various quality control filtering steps. The filters were applied sequentially from left to right across the x-axis.*"}
 filtProgress %>%
   dplyr::select(
-    sample, None = initial, `Biallelic SNVs` = biallelic,
+    sample, `Within exons` = initial, GATK = GATK,
     `WASP/ASEReadCounter` = software,
     Coverage = coverage, `Mono-allelic expression` = monoallelic
   ) %>%
@@ -851,6 +1101,7 @@ filtProgress %>%
   ggplot(aes(Filter, SNVs, group = Filter, fill = Filter)) +
   geom_boxplot() +
   labs(y = "Number of SNVs") +
+  scale_y_continuous(labels = comma) +
   theme(
     legend.position = "none",
     axis.title.x = element_blank(),
@@ -878,7 +1129,10 @@ covPlotA <- lapply(aseRC, function(x){
   ggplot(aes(bin, n, fill = bin)) +
   geom_boxplot() +
   labs(x = "Reads / SNV", y = "SNVs per sample") +
-  scale_y_continuous(breaks = seq(0, 100000, 10000)) +
+  scale_y_continuous(
+    breaks = seq(0, 100000, 10000),
+    labels = comma
+  ) +
   theme(
     legend.position = "none",
     panel.grid.major.x = element_blank()
@@ -923,7 +1177,10 @@ covPlotB <- lapply(aseRCByGene, function(x){
   ggplot(aes(bin, n, fill = bin)) +
   geom_boxplot() +
   labs(x = "Reads / SNV", y = "Gene count") +
-  scale_y_continuous(breaks = seq(0, 10000, 1000)) +
+  scale_y_continuous(
+    breaks = seq(0, 10000, 1000),
+    labels = comma
+  ) +
   theme(
     legend.position = "none",
     panel.grid.major.x = element_blank()
@@ -970,7 +1227,10 @@ covPlotC <- lapply(aseRCByGene, function(x){
     labels = c("\u2265 10", "\u2265 20", "\u2265 30", "\u2265 40", "\u2265 50")
   ) +
   scale_x_continuous(minor_breaks = seq(0, 30, 1)) +
-  scale_y_continuous(breaks = seq(0, 5000, 100)) +
+  scale_y_continuous(
+    breaks = seq(0, 5000, 100),
+    labels = comma
+  ) +
   coord_cartesian(xlim = c(0, 25)) +
   labs(x = "SNVs / gene", y = "Median gene count", colour = "Coverage") +
   theme(legend.position= c(0.75, 0.75))
@@ -980,7 +1240,7 @@ covPlotC <- lapply(aseRCByGene, function(x){
 ggarrange(covPlotA, covPlotB, covPlotC, nrow = 1, labels = "AUTO")
 ```
 
-# Export
+### Export
 
 For static ASE testing, which describes the difference between two variants of a heterozygous allele in a single sample in an unchanging condition, `geneiASE` software was chosen.
 `geneiASE` requires allele counts `tsv` format with four columns: featureID, snpID, alternative allele count, reference allele count. 
@@ -998,7 +1258,7 @@ staticCounts <- lapply(aseRCByGene, function(x){
   set_names(samples)
 lapply(seq_along(staticCounts), function(x){
   path <- paste0(
-    "/hpcfs/users/a1647910/210216_sorl1_snv/11_geneiase/counts/",
+    "/hpcfs/users/a1647910/210216_sorl1_snv/11_geneiase/1_counts/",
     names(staticCounts[x]),
     ".static.tsv"
   )
@@ -1011,7 +1271,7 @@ lapply(seq_along(staticCounts), function(x){
 })
 ```
 
-##### Session information
+# Session information
 
 ```{r}
 sessionInfo() %>%
