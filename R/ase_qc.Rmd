@@ -188,7 +188,7 @@ After trimming between `r pander(range(percent_format(0.01)(trimStats$Discarded)
 ### Aligned data
 
 Trimmed reads were aligned to GRCz11 reference genome (Ensembl release 101) with `STAR 2.7.7a`.
-`STAR`'s two-pass mode was chosen to achieve better alignments around novel splice junctions.
+`STAR`'s two-pass mode was implemented to achieve better alignments around novel splice junctions.
 
 # GATK short variant discovery
 
@@ -219,8 +219,205 @@ dupeMetrics <- list.files(here("03_markDuplicates/log/"), full.names = TRUE) %>%
 ```
 
 Between `r pander(range(percent_format(0.01)(dupeMetrics$percent.duplication)))` of reads were marked as duplicates across all samples.
-These large proportions are likely due to the conservative nature of the duplicate detection strategy.
-Additionally, this dataset consists of single-end reads, and therefore the software can only classify dulplicates based on a single sequence.
+These large proportions were noted as a concern for downstream processing due to a substantial loss of information when duplicates are excluded.
+Such large estimates are likely due to the conservative nature of the duplicate detection strategy, which is hard to avoid when a dataset consists of single-end reads, and therefore the software can only classify dulplicates based on a single position.
+
+### Base quality score recalibration
+
+Base quality score recalibration (BQSR) is a recommended technique in the `GATK` workflow which is used to assign accurate confidence scores to each sequenced base.
+Real data contains systematic biases due to artifacts of sample preparation, sequencing and mapping.
+BQSR aims to correct for the range of these types of artifacts, as downstream tools rely on base qualities to weigh the variant calls they make.
+The process involves two keys steps performed by tools `BaseRecalibrator` and `ApplyBQSR`in the `GATK` suite.
+
+**BaseRecalibrator**
+
+`BaseRecalibrator` builds a model of covariation based on the input data and a set of known variants.
+Since this dataset originates from zebrafish which are highly polymorphic, the set of known variants was generated directly from the data as opposed to obtaining it from an online database.
+Details about this procedure are described [here](https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR-).
+`BaseRecalibrator` records data about the following features of aligned bases:
+
+- Read group
+- Quality score
+- Machine cycle producing the base (Nth cycle = Nth base from the start of the read)
+- Dinucleotide context (current base + previous base)
+
+For each bin, the number of bases and how often such bases mistmatch the reference are counted and exported as a recalibration report.
+
+**ApplyBQSR**
+
+`ApplyBQSR` uses the recalibration file to go through the reads and adjust each base's score based on what bins it falls in.
+The new quality score is effectively determined by:
+
+- The sum of the global difference between reported quality scores and the empirical quality
+- Plus the quality bin specific shift
+- Plus the cycle x quality and dinucleotide x quality effect
+
+Recalibration should cause the read quality scores to match their empirical scores much closer than before.
+This allows for more statistically robust downstream variant calling.
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/05_addRG/metrics",
+  full.names = TRUE
+)
+beforeRecalMetrics <- lapply(files, read_lines) %>%
+  set_names(str_remove(basename(files), ".tsv"))
+beforeRecalSummary <- map2(beforeRecalMetrics, files, function(.x, .y){
+  grep("^SN", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[, 2:3] %>%
+    set_colnames(c("metric", "value")) %>%
+    as_tibble() %>%
+    mutate(metric = str_remove(metric, ":$")) %>%
+    pivot_wider(names_from = "metric", values_from = "value") %>%
+    mutate(
+      across(everything(), as.numeric),
+      sample = str_remove(basename(.y), ".tsv")
+    )
+}) %>%
+  bind_rows()
+beforeRecalQuality <- map2(beforeRecalMetrics, files, function(.x, .y){
+  grep("^FFQ", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[,-1] %>%
+    set_colnames(c("cycle", paste0("BQ", seq(0, ncol(.) - 2)))) %>%
+    as_tibble() %>%
+    mutate(across(everything(), as.numeric)) %>%
+    .[, colSums(.) != 0] %>%
+    mutate(
+      cycle = as.factor(cycle),
+      sample = str_remove(basename(.y), ".tsv")
+    ) 
+})
+```
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/metrics",
+  full.names = TRUE
+)
+afterRecalMetrics <- lapply(files, read_lines) %>%
+  set_names(str_remove(basename(files), ".tsv"))
+afterRecalSummary <- map2(afterRecalMetrics, files, function(.x, .y){
+  grep("^SN", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[, 2:3] %>%
+    set_colnames(c("metric", "value")) %>%
+    as_tibble() %>%
+    mutate(metric = str_remove(metric, ":$")) %>%
+    pivot_wider(names_from = "metric", values_from = "value") %>%
+    mutate(
+      across(everything(), as.numeric),
+      sample = str_remove(basename(.y), ".tsv")
+    )
+}) %>%
+  bind_rows()
+afterRecalQuality <- map2(afterRecalMetrics, files, function(.x, .y){
+  grep("^FFQ", .x, value = TRUE) %>%
+    str_split("\t", simplify = TRUE) %>%
+    .[,-1] %>%
+    set_colnames(c("cycle", paste0("BQ", seq(0, ncol(.) - 2)))) %>%
+    as_tibble() %>%
+    mutate(across(everything(), as.numeric)) %>%
+    .[, colSums(.) != 0] %>%
+    mutate(
+      cycle = as.factor(cycle),
+      sample = str_remove(basename(.y), ".tsv")
+    ) 
+})
+```
+
+For successful recalibration it is critical that each read group (sample in this case) has more than 100 million aligned bases.
+For this dataset the number of aligned bases ranged between `r pander(comma(range(pull(beforeRecalSummary, "bases mapped (cigar)"))))` across all samples, and therefore base recalibration was performed.
+
+```{r}
+files <- list.files(
+  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/recal",
+  pattern = "analyzeCovariates",
+  full.names = TRUE
+)
+recalCovariates <- lapply(files, function(x){
+  read_csv(x) %>%
+    mutate(sample = str_remove(basename(x), ".analyzeCovariates.csv"))
+})
+```
+
+To assess whether base recalibration was successful, base qualities were assessed before and after recalibration.
+As all samples showed similar profiles, a representative sample for each genotype is shown below.
+
+```{r, fig.height=4, fig.cap="*Reported base quality plotted against empirical quality. Base qualities before recalibration showed patterns of over-estimation by the sequencer. Post-recalibration quality scores fitted the empirically derived quality scores better than pre-recalibration. Additionally a greater distribution of quality scores was observed after recalibration procedures.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "QualityScore") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(facet = paste(sample, "-", genotype))
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(AverageReportedQuality, EmpiricalQuality)) +
+  geom_point(aes(colour = Recalibration), alpha = 0.7) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) + 
+  xlab("Reported Quality Score") +
+  ylab("Empirical Quality Score") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7)
+  )
+```
+
+```{r, fig.height=4, fig.cap="*Residual error by machine cycle. Observations before recalibration are coloured pink and after recalibration are blue. Most cycles showed an overestimation of base qualities which was improved after recalibration.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "Cycle") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(
+      CovariateValue = factor(CovariateValue, levels = unique(CovariateValue)),
+      facet = paste(sample, "-", genotype)
+    )
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(CovariateValue, Accuracy)) +
+  geom_point(aes(colour = Recalibration), alpha = 0.7)+
+  geom_abline(intercept = 0, slope = 0, linetype = 2) + 
+  xlab("Machine Cycle") +
+  ylab("Quality Score Accuracy (Empirical - Reported)") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  scale_x_discrete(breaks = seq(0, 100, 5)) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7),
+    axis.text.x = element_text(size = 6, angle = 270, hjust = 0)
+  )
+```
+
+```{r, fig.height=4, fig.cap="*Residual error by dinucleotide. Observations before recalibration are coloured pink and after recalibration are blue. Dinucleotide contexts showed over-estimation of base qualities pre-recalibration but were substantially improved after recalibration.*"}
+lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
+  x %>%
+    dplyr::filter(CovariateName == "Context") %>%
+    left_join(metadata[, c("sample", "genotype")]) %>%
+    mutate(
+      CovariateValue = factor(CovariateValue, levels = unique(CovariateValue)),
+      facet = paste(sample, "-", genotype)
+    )
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(CovariateValue, Accuracy, colour = Recalibration)) +
+  geom_point(alpha = 0.7, shape = "\U2012", size = 5)+
+  geom_abline(intercept = 0, slope = 0, linetype = 2) + 
+  xlab("Dinucleotide") +
+  ylab("Quality Score Accuracy (Empirical - Reported)") +
+  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  facet_wrap(~facet, nrow = 1) +
+  theme(
+    legend.position = "bottom",
+    strip.text.x = element_text(size = 7),
+    axis.text.x = element_text(size = 6, angle = 270, hjust = 0)
+  )
+```
 
 ### Genomic location
 
@@ -269,7 +466,7 @@ if (makeIntervals) {
 }
 ```
 
-The intervals were also exported as a `BED` file for use with other software.
+The intervals were also exported as a `BED` file as some software prefer this format.
 
 ```{r}
 bedPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/intervals/exons.bed"
@@ -293,36 +490,29 @@ if (makeBed) {
 }
 ```
 
-### Base quality score recalibration
-
-Base quality score recalibration (BQSR) is a recommended technique in the `GATK1 workflow used to assign accurate confidence scores to each sequenced base.
-Real data contains systematic biases due to artifacts of sample preparation, sequencing and mapping.
-BQSR aims to correct for the range of these types of artifacts, as the downstream tools rely on base qualities to weigh the variant calls they make.
-
-```{r}
-tmp <- read_csv("/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/recal/SRR11951228.analyzeCovariates.csv")
-tmp %>%
-  dplyr::filter(CovariateName == "QualityScore") %>%
-  ggplot(aes(AverageReportedQuality, EmpiricalQuality)) +
-  geom_point(aes(colour = Recalibration)) +
-  geom_abline(intercept=0, slope=1, linetype=2) + 
-  xlab("Reported Quality Score") +
-  ylab("Empirical Quality Score") +
-  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue"))
-tmp %>%
-  dplyr::filter(CovariateName == "Cycle") %>%
-  mutate(CovariateValue = factor(CovariateValue, levels = unique(CovariateValue))) %>%
-  ggplot(aes(CovariateValue, Accuracy)) +
-  geom_point(aes(colour = Recalibration))+
-  geom_abline(intercept=0, slope=0, linetype=2) + 
-  xlab("Machine Cycle") +
-  ylab("Quality Score Accuracy") +
-  scale_colour_manual(values = c("Before" = "maroon1", "After" = "blue")) +
-  scale_x_discrete(breaks = seq(0, 100, 5)) +
-  coord_cartesian(ylim = c(-10, 10))
-```
-
 ### Variant calling
+
+With the to perform downstream ASE analysis, initial variants were restricted to only biallelic SNVs.
+Additionally, for RNA-seq data, `GATK` recommends [specific hard filters](https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants).
+Variants were removed with the following filters:
+
+- QualByDepth: QD < 2.0 
+    - Variant confidence (QUAL field) divided by the unfiltered depth of non-homozygous reference samples.
+    Removing variants that have a low QD normalises the variant quality and avoids inflation caused by deep coverage.
+- FisherStrand: FS > 60.0
+    - The Phred-scaled probability there there is strand bias at the site.
+    Strand bias indicates whether the alternate allele was seen more or less often on the forward or reverse strand than the reference allele.
+    When there is little to no strand bias at the site, the FS value is close to 0.
+- StrandOddsRatio: SOR > 4.0
+    - An alternative way to estimate strand bias using a test similar to the symmetric odds ratio test.
+- RMSMappingQuality: MQ < 40.0
+    - Root mean square mapping quality over all the reads at the site.
+- MappingQualityRankSumTest: MQRankSum < -12.5
+    - u-based z-approximation from the Rank Sum Test for mapping qualities.
+    This compares the mapping qualities of the reads supporting the reference allele and the alternate allele.
+- ReadPosRankSumTest: ReadPosRankSum < -8.0
+    - u-based z-approximation from the Rank Sum Test for site position within reads.
+    This compares whether the positions of the reference and alternate alleles are different within the reads.
 
 ```{r}
 calledMetrics <- list.files(
@@ -373,17 +563,11 @@ filtProgress <- calledMetrics %>%
   dplyr::select(sample = SAMPLE_ALIAS, initial = TOTAL_SNPS)
 filtProgress <- selectedMetrics %>%
   as_tibble() %>%
-  dplyr::select(sample = SAMPLE_ALIAS, biallelic = TOTAL_SNPS) %>%
+  dplyr::select(sample = SAMPLE_ALIAS, GATK = TOTAL_SNPS) %>%
   left_join(filtProgress)
 ```
 
-`GATK`'s initial variant calling output provides a number of different types of variants, for example indels, single nucleotide and multi nucleotide variants.
-The total number of all types of variants ranges between `r pander(range(filtProgress$initial))`.
-
-It is recommended that only single nucleotide variants (SNVs) are used for ASE analysis.
-Furthermore, only biallelic SNVs are informative for estimating allelic proportions in terms of ASE.
-A filter was applied such that only biallelic SNVs remained for ASE analysis.
-The number of biallelic SNVs ready for ASE analysis ranged between `r pander(range(filtProgress$biallelic))`.
+After `GATK` recommended hard filters were applied thhe number of biallelic SNVs ready for ASE analysis ranged between `r pander(comma(range(filtProgress$GATK)))`.
 
 # Allele Specific Expression
 
@@ -908,7 +1092,7 @@ The mean reference ratios for each sample will be used as the null in statistica
 ```{r, fig.cap="*Boxplots of the total number of SNVs remaining in each sample after various quality control filtering steps. The filters were applied sequentially from left to right across the x-axis.*"}
 filtProgress %>%
   dplyr::select(
-    sample, None = initial, `Biallelic SNVs` = biallelic,
+    sample, `Within exons` = initial, GATK = GATK,
     `WASP/ASEReadCounter` = software,
     Coverage = coverage, `Mono-allelic expression` = monoallelic
   ) %>%
