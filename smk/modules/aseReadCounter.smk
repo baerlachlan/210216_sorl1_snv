@@ -6,7 +6,7 @@ rule aseRC:
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		intervals = "08_callSnvs/intervals/exons.intervals"
 	output:
-		tsv = "10_aseReadCounter/wasp/{SAMPLE}.tsv"
+		tsv = temp("10_aseReadCounter/wasp/{SAMPLE}.tsv")
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -35,7 +35,7 @@ rule aseRC_nowasp:
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		intervals = "08_callSnvs/intervals/exons.intervals"
 	output:
-		tsv = "10_aseReadCounter/nowasp/{SAMPLE}.tsv"
+		tsv = temp("10_aseReadCounter/nowasp/{SAMPLE}.tsv")
 	conda:
 		"../envs/ase.yaml"
 	resources:

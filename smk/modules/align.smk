@@ -4,7 +4,9 @@ rule align:
 		starIndex = "refs/star/"
 	output:
 		bamRenamed = temp("02_align/bam/{SAMPLE}.bam"),
-		bamIndex = temp("02_align/bam/{SAMPLE}.bam.bai")
+		bamIndex = temp("02_align/bam/{SAMPLE}.bam.bai"),
+		STARgenome = temp(directory("02_align/bam/{SAMPLE}_STARgenome")),
+		STARpass1 = temp(directory("02_align/bam/{SAMPLE}_STARpass1"))
 	params:
 		overhang = READ_LEN-1,
 		bname = "02_align/bam/{SAMPLE}",

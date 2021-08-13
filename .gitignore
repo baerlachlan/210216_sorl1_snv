@@ -34,3 +34,5 @@ refs/*
 09_wasp/*
 10_aseReadCounter/*
 *.static.tsv
+*.firstPass.table
+*.secondPass.table

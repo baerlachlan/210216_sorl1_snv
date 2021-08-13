@@ -33,9 +33,6 @@ rule all:
 	input:
 		expand("{DIR}/FastQC/{SAMPLE}_fastqc.{EXT}", DIR = FQC_DIRS, SAMPLE = SAMPLES, EXT = FQC_EXT),
         "02_align/featureCounts/genes.out",
-        expand("02_align/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
-        expand("05_addRG/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
-        expand("07_recalBases/metrics/{SAMPLE}.tsv", SAMPLE = SAMPLES),
         expand("07_recalBases/recal/{SAMPLE}.analyzeCovariates.csv", SAMPLE = SAMPLES),
         expand("08_callSnvs/4_selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
         expand("10_aseReadCounter/{DIR}/{SAMPLE}.tsv", DIR = ["wasp", "nowasp"], SAMPLE = SAMPLES),

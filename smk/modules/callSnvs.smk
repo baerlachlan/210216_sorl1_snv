@@ -134,7 +134,7 @@ rule selectSnvs:
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
 		snvs = "06_dbsnp/4_selected/{SAMPLE}_snvs.vcf.gz"
 	output:
-		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
+		vcf = temp("08_callSnvs/4_selected/{SAMPLE}.vcf.gz"),
 		vcfIndex = temp("08_callSnvs/4_selected/{SAMPLE}.vcf.gz.tbi"),
 		detailMetrics = "08_callSnvs/4_selected/log/{SAMPLE}.variant_calling_detail_metrics",
 		summaryMetrics = "08_callSnvs/4_selected/log/{SAMPLE}.variant_calling_summary_metrics"

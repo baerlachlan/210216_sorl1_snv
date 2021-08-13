@@ -31,7 +31,9 @@ rule remap:
 	output:
 		remapped_unsorted = temp("09_wasp/3_remap/{SAMPLE}Aligned.out.bam"),
 		remapped_sorted = temp("09_wasp/3_remap/{SAMPLE}sorted.out.bam"),
-		index = temp("09_wasp/3_remap/{SAMPLE}sorted.out.bam.bai")
+		index = temp("09_wasp/3_remap/{SAMPLE}sorted.out.bam.bai"),
+		STARgenome = temp(directory("09_wasp/3_remap/{SAMPLE}_STARgenome")),
+		STARpass1 = temp(directory("09_wasp/3_remap/{SAMPLE}_STARpass1"))
 	params:
 		overhang = READ_LEN-1,
 		bname = "09_wasp/3_remap/{SAMPLE}"

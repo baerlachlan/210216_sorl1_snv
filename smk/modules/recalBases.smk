@@ -38,8 +38,9 @@ rule applyRecal:
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
 		recal = "07_recalBases/recal/{SAMPLE}.firstPass.table"
 	output:
-		bam = "07_recalBases/bam/{SAMPLE}.bam",
-		bamIndex = "07_recalBases/bam/{SAMPLE}.bai"
+		bam = temp("07_recalBases/bam/{SAMPLE}.bam"),
+		bamIndex = temp("07_recalBases/bam/{SAMPLE}.bai"),
+		metrics = "07_recalBases/metrics/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -59,6 +60,8 @@ rule applyRecal:
             -I {input.bam} \
             -O {output.bam} \
             --bqsr-recal-file {input.recal}
+
+		samtools stats -d {output.bam} > {output.metrics}
 		"""
 
 rule recalSecondPass:
@@ -111,21 +114,4 @@ rule analyzeCovariates:
 			-before {input.firstPass} \
      		-after {input.secondPass} \
      		-csv {output.csv}
-		"""
-
-rule applyRecal_metrics:
-	input:
-		bam = "07_recalBases/bam/{SAMPLE}.bam"
-	output:
-		metrics = "07_recalBases/metrics/{SAMPLE}.tsv"
-	conda:
-		"../envs/ase.yaml"
-	resources:
-		cpu = 1,
-		ntasks = 1,
-		mem_mb = 4000,
-		time = "00-00:10:00"
-	shell:
-		"""
-		samtools stats -d {input.bam} > {output.metrics}
 		"""
