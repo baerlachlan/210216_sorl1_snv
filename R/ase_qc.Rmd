@@ -1,5 +1,6 @@
 ---
 title: "Allele Specific Expression Quality Control"
+subtitle: "210216_sorl1 dataset"
 author: "Lachlan Baer"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -63,7 +64,7 @@ cores <- availableCores() - 1
 source("~/bioinformatics/bioToolkit/lbFuncs.R")
 ```
 
-### EnsDb
+## EnsDb
 
 ```{r}
 ah <- AnnotationHub() %>%
@@ -77,9 +78,9 @@ mcols(genes) <- mcols(genes)[
 exons <- exonsBy(ensDb, by = "gene")
 ```
 
-An `EnsDb` object for Ensemble release 101 was setup for extracting gene and exon annotation information.
+An `EnsDb` object for Ensembl release 101 was setup for extracting gene and exon annotation information.
 
-### Metadata
+## Metadata
 
 ```{r}
 metadata <- read_csv(here("files/SraRunTable.txt")) %>%
@@ -123,7 +124,7 @@ drChrs <- seq(1:25)
 
 # Pre-processing
 
-### Raw data
+## Raw data
 
 ```{r}
 rawFqc <- list.files(
@@ -134,7 +135,7 @@ rawFqc <- list.files(
   FastqcDataList()
 ```
 
-#### Library sizes
+### Library sizes
 
 Library Sizes for the raw, unprocessed dataset ranged between `r pander(comma(range(readTotals(rawFqc)$Total_Sequences)))` reads.
 
@@ -142,7 +143,7 @@ Library Sizes for the raw, unprocessed dataset ranged between `r pander(comma(ra
 plotReadTotals(rawFqc)
 ```
 
-#### GC content
+### GC content
 
 ```{r, fig.cap="*GC content distributions for all samples. Hover for more details.*"}
 plotly::ggplotly({
@@ -156,7 +157,7 @@ plotly::ggplotly({
 })
 ```
 
-### Trimmed data
+## Trimmed data
 
 Trimming software was setup carefully with the intention to perform downstream detection of short variants following the `GATK` workflow.
 Part of this process involves the removal of duplicate reads which relies on detection of duplicates by comparing sequences in the 5' positions.
@@ -185,14 +186,14 @@ trimStats <- readTotals(rawFqc) %>%
 
 After trimming between `r pander(range(percent_format(0.01)(trimStats$Discarded)))` of reads were discarded.
 
-### Aligned data
+## Aligned data
 
 Trimmed reads were aligned to GRCz11 reference genome (Ensembl release 101) with `STAR 2.7.7a`.
 `STAR`'s two-pass mode was implemented to achieve better alignments around novel splice junctions.
 
 # GATK short variant discovery
 
-### Duplicates
+## Duplicates
 
 Marking duplicates is important because almost all statistical models for variant calling assume some sort of independence between measurements.
 Duplicates that arise from PCR artifacts are not independent.
@@ -222,12 +223,12 @@ Between `r pander(range(percent_format(0.01)(dupeMetrics$percent.duplication)))`
 These large proportions were noted as a concern for downstream processing due to a substantial loss of information when duplicates are excluded.
 Such large estimates are likely due to the conservative nature of the duplicate detection strategy, which is hard to avoid when a dataset consists of single-end reads, and therefore the software can only classify dulplicates based on a single position.
 
-### Base quality score recalibration
+## Base quality score recalibration
 
 Base quality score recalibration (BQSR) is a recommended technique in the `GATK` workflow which is used to assign accurate confidence scores to each sequenced base.
 Real data contains systematic biases due to artifacts of sample preparation, sequencing and mapping.
 BQSR aims to correct for the range of these types of artifacts, as downstream tools rely on base qualities to weigh the variant calls they make.
-The process involves two keys steps performed by tools `BaseRecalibrator` and `ApplyBQSR`in the `GATK` suite.
+The process involves two keys steps performed by tools `BaseRecalibrator` and `ApplyBQSR` in the `GATK` suite.
 
 **BaseRecalibrator**
 
@@ -245,19 +246,19 @@ For each bin, the number of bases and how often such bases mistmatch the referen
 
 **ApplyBQSR**
 
-`ApplyBQSR` uses the recalibration file to go through the reads and adjust each base's score based on what bins it falls in.
+`ApplyBQSR` uses the recalibration file to go through the reads and adjust each base's score depending on what bins it falls in.
 The new quality score is effectively determined by:
 
 - The sum of the global difference between reported quality scores and the empirical quality
-- Plus the quality bin specific shift
-- Plus the cycle x quality and dinucleotide x quality effect
+- plus the quality bin specific shift
+- plus the cycle x quality and dinucleotide x quality effect
 
 Recalibration should cause the read quality scores to match their empirical scores much closer than before.
 This allows for more statistically robust downstream variant calling.
 
 ```{r}
 files <- list.files(
-  "/hpcfs/users/a1647910/210216_sorl1_snv/05_addRG/metrics",
+  "/hpcfs/users/a1647910/210216_sorl1_snv/05_addRG/samstats",
   full.names = TRUE
 )
 beforeRecalMetrics <- lapply(files, read_lines) %>%
@@ -293,7 +294,7 @@ beforeRecalQuality <- map2(beforeRecalMetrics, files, function(.x, .y){
 
 ```{r}
 files <- list.files(
-  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/metrics",
+  "/hpcfs/users/a1647910/210216_sorl1_snv/07_recalBases/samstats",
   full.names = TRUE
 )
 afterRecalMetrics <- lapply(files, read_lines) %>%
@@ -419,7 +420,7 @@ lapply(recalCovariates[c(1, 9, 15, 19)], function(x){
   )
 ```
 
-### Genomic location
+## Genomic location
 
 Variants were restricted to those that lie only in exonic regions of the Ensembl version 101 primary assembly.
 For zebrafish this consists of chromosomes `r min(drChrs)` to `r max(drChrs)`.
@@ -442,7 +443,7 @@ exonRanges <- exons %>%
 ```
 
 ```{r}
-intervalPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/intervals/exons.intervals"
+intervalPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/refs/exons.intervals"
 makeIntervals <- !file.exists(intervalPath)
 if (makeIntervals) {
   if (!dir.exists(dirname(intervalPath))) {
@@ -469,7 +470,7 @@ if (makeIntervals) {
 The intervals were also exported as a `BED` file as some software prefer this format.
 
 ```{r}
-bedPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/08_callSnvs/intervals/exons.bed"
+bedPath <- "/hpcfs/users/a1647910/210216_sorl1_snv/refs/exons.bed"
 makeBed <- !file.exists(bedPath)
 if (makeBed) {
   if (!dir.exists(dirname(bedPath))) {
@@ -490,13 +491,13 @@ if (makeBed) {
 }
 ```
 
-### Variant calling
+## Variant calling
 
 With the to perform downstream ASE analysis, initial variants were restricted to only biallelic SNVs.
 Additionally, for RNA-seq data, `GATK` recommends [specific hard filters](https://gatk.broadinstitute.org/hc/en-us/articles/360035890471-Hard-filtering-germline-short-variants).
 Variants were removed with the following filters:
 
-- QualByDepth: QD < 2.0 
+- QualByDepth: QD < 2.0
     - Variant confidence (QUAL field) divided by the unfiltered depth of non-homozygous reference samples.
     Removing variants that have a low QD normalises the variant quality and avoids inflation caused by deep coverage.
 - FisherStrand: FS > 60.0
@@ -620,9 +621,6 @@ snvList <- lapply(seq_along(gdsPaths), function(x){
     allele = seqGetData(gds, "allele"),
     filter = seqGetData(gds, "annotation/filter")
   ) %>%
-    # dplyr::filter(
-    #   filter == "PASS"
-    # ) %>%
     mutate(
       sample = sample,
       refAllele = str_split(allele, ",", simplify = TRUE)[,1],
@@ -709,7 +707,6 @@ files_nowasp <- list.files(
   "/hpcfs/users/a1647910/210216_sorl1_snv/10_aseReadCounter/nowasp",
   full.names = TRUE
 )
-
 samples <- basename(files_nowasp) %>%
   str_remove(".tsv")
 aseRC_nowasp <- lapply(files_nowasp, function(file){
@@ -1057,13 +1054,14 @@ refRatios_wasp %>%
   labs(x = "Sample", y = "Reference allele ratio") +
   scale_fill_manual(name = "Genotype", values = genoCols) +
   scale_y_continuous(breaks = seq(0, 1, 0.1)) +
-  guides(colour = FALSE) +
+  guides(colour = "none") +
   theme(
     axis.text.x = element_text(angle = -90, vjust = 0.5),
     legend.position = "bottom"
   ) +
   ggtitle(label = "Reference allele ratios with WASP filtering")
 ```
+
 `WASP` filtering significantly improved the reference allele mapping bias and therefore `WASP` filtered data was chosen for ASE testing.
 
 ```{r}
@@ -1128,7 +1126,7 @@ covPlotA <- lapply(aseRC, function(x){
   bind_rows() %>%
   ggplot(aes(bin, n, fill = bin)) +
   geom_boxplot() +
-  labs(x = "Reads / SNV", y = "SNVs per sample") +
+  labs(x = "Reads / SNV", y = "SNV count") +
   scale_y_continuous(
     breaks = seq(0, 100000, 10000),
     labels = comma
