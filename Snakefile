@@ -15,10 +15,10 @@
 ##   - The reasoning and process for this is located at https://gatk.broadinstitute.org/hc/en-us/articles/360035890531?id=44 (Section 3)
 
 SAMPLES = [
-    "SRR11951228", "SRR11951229", "SRR11951230", "SRR11951231", "SRR11951232", "SRR11951233",
-    "SRR11951234", "SRR11951235", "SRR11951236", "SRR11951237", "SRR11951238", "SRR11951239",
-    "SRR11951240", "SRR11951241", "SRR11951242", "SRR11951243", "SRR11951244", "SRR11951245",
-    "SRR11951246", "SRR11951247", "SRR11951248", "SRR11951249", "SRR11951250", "SRR11951251"
+	"SRR11951228", "SRR11951229", "SRR11951230", "SRR11951231", "SRR11951232", "SRR11951233",
+	"SRR11951234", "SRR11951235", "SRR11951236", "SRR11951237", "SRR11951238", "SRR11951239",
+	"SRR11951240", "SRR11951241", "SRR11951242", "SRR11951243", "SRR11951244", "SRR11951245",
+	"SRR11951246", "SRR11951247", "SRR11951248", "SRR11951249", "SRR11951250", "SRR11951251"
 ]
 REF_EXT = ["dict", "fa.fai"]
 FQC_DIRS = ["00_rawData", "01_trim", "02_align"]
@@ -32,11 +32,13 @@ READ_LEN = 75
 rule all:
 	input:
 		expand("{DIR}/FastQC/{SAMPLE}_fastqc.{EXT}", DIR = FQC_DIRS, SAMPLE = SAMPLES, EXT = FQC_EXT),
-        "02_align/featureCounts/genes.out",
-        expand("07_recalBases/recal/{SAMPLE}.analyzeCovariates.csv", SAMPLE = SAMPLES),
-        expand("08_callSnvs/4_selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
-        expand("10_aseReadCounter/{DIR}/{SAMPLE}.tsv", DIR = ["wasp", "nowasp"], SAMPLE = SAMPLES),
-        expand("11_geneiase/2_ase/{SAMPLE}.static.pval.tsv", SAMPLE = SAMPLES)
+		"02_align/featureCounts/genes.out",
+		# expand("03_markDuplicates/bam/{SAMPLE}.bam", SAMPLE = SAMPLES),
+		# expand("04_splitNCigar/bam/{SAMPLE}.bam", SAMPLE = SAMPLES),
+		expand("07_recalBases/recal/{SAMPLE}.analyzeCovariates.csv", SAMPLE = SAMPLES),
+		expand("08_callSnvs/4_selected/{SAMPLE}.vcf.gz", SAMPLE = SAMPLES),
+		expand("10_aseReadCounter/{DIR}/{SAMPLE}.tsv", DIR = ["wasp", "nowasp"], SAMPLE = SAMPLES),
+		expand("11_geneiase/2_ase/{SAMPLE}.static.pval.tsv", SAMPLE = SAMPLES)
 
 include: "smk/modules/refs.smk"
 include: "smk/modules/fastqc_raw.smk"

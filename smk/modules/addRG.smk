@@ -7,7 +7,7 @@ rule addRG:
 	output:
 		bam = temp("05_addRG/bam/{SAMPLE}.bam"),
 		bamIndex = temp("05_addRG/bam/{SAMPLE}.bai"),
-		metrics = "05_addRG/metrics/{SAMPLE}.tsv"
+		samstats = "05_addRG/samstats/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -22,12 +22,12 @@ rule addRG:
     		-I {input.bam} \
    			-O {output.bam} \
     		-SORT_ORDER coordinate \
-    		-RGID default \
-    		-RGLB default \
+    		-RGID {wildcards.SAMPLE} \
+			-RGPU null \
     		-RGSM {wildcards.SAMPLE} \
-			-RGPU default \
     		-RGPL ILLUMINA \
+    		-RGLB null \
     		-CREATE_INDEX True
 
-		samtools stats -d {output.bam} > {output.metrics}
+		samtools stats -d {output.bam} > {output.samstats}
 		"""

@@ -8,7 +8,7 @@ rule splitNCigar:
 	output:
 		bam = temp("04_splitNCigar/bam/{SAMPLE}.bam"),
 		bamIndex = temp("04_splitNCigar/bam/{SAMPLE}.bai"),
-		flagstat = "04_splitNCigar/flagstat/{SAMPLE}.tsv"
+		samstats = "04_splitNCigar/samstats/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -24,5 +24,5 @@ rule splitNCigar:
             -I {input.bam} \
             -O {output.bam}
 
-		samtools flagstat -O tsv {output.bam} > {output.flagstat}
+		samtools stats -d {output.bam} > {output.samstats}
 		"""

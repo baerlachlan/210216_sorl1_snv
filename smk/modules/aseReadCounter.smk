@@ -4,9 +4,9 @@ rule aseRC:
 		bamIndex = "09_wasp/5_merge/{SAMPLE}.keep.merge.sort.bam.bai",
 		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		intervals = "08_callSnvs/intervals/exons.intervals"
+		intervals = "refs/exons.intervals"
 	output:
-		tsv = temp("10_aseReadCounter/wasp/{SAMPLE}.tsv")
+		tsv = "10_aseReadCounter/wasp/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -33,9 +33,9 @@ rule aseRC_nowasp:
 		bamIndex = "07_recalBases/bam/{SAMPLE}.bai",
 		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
-		intervals = "08_callSnvs/intervals/exons.intervals"
+		intervals = "refs/exons.intervals"
 	output:
-		tsv = temp("10_aseReadCounter/nowasp/{SAMPLE}.tsv")
+		tsv = "10_aseReadCounter/nowasp/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:

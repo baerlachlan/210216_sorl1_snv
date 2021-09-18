@@ -6,8 +6,8 @@ rule markDuplicates:
 	output:
 		bam = temp("03_markDuplicates/bam/{SAMPLE}.bam"),
 		bamIndex = temp("03_markDuplicates/bam/{SAMPLE}.bai"),
-		metrics = "03_markDuplicates/log/{SAMPLE}.tsv",
-		flagstat = "03_markDuplicates/flagstat/{SAMPLE}.tsv"
+		metrics = "03_markDuplicates/metrics/{SAMPLE}.tsv",
+		samstats = "03_markDuplicates/samstats/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -18,12 +18,12 @@ rule markDuplicates:
 	shell:
 		"""
 		gatk \
- 	    	MarkDuplicates \
- 	        --INPUT {input} \
- 	        --OUTPUT {output.bam}  \
+			MarkDuplicates \
+			--INPUT {input} \
+			--OUTPUT {output.bam}  \
 			--DUPLICATE_SCORING_STRATEGY RANDOM \
- 	        --CREATE_INDEX true \
- 	        --METRICS_FILE {output.metrics}
+			--CREATE_INDEX true \
+			--METRICS_FILE {output.metrics}
 
-		samtools flagstat -O tsv {output.bam} > {output.flagstat}
+		samtools stats {output.bam} > {output.samstats}
 		"""

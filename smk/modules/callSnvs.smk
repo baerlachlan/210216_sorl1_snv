@@ -5,7 +5,7 @@ rule callVariants:
 		refFa = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa",
 		refIndex = "refs/Danio_rerio.GRCz11.dna.primary_assembly.fa.fai",
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
-		intervals = "08_callSnvs/intervals/exons.intervals",
+		intervals = "refs/exons.intervals",
 		snvs = "06_dbsnp/4_selected/{SAMPLE}_snvs.vcf.gz",
 		indels = "06_dbsnp/4_selected/{SAMPLE}_indels.vcf.gz"
 	output:
@@ -21,7 +21,7 @@ rule callVariants:
 		cpu = 1,
 		ntasks = 1,
 		mem_mb = 8000,
-		time = "00-4:00:00"
+		time = "00-04:00:00"
 	shell:
 		"""
 		gatk --java-options "-Xms6000m -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -134,8 +134,8 @@ rule selectSnvs:
 		refDict = "refs/Danio_rerio.GRCz11.dna.primary_assembly.dict",
 		snvs = "06_dbsnp/4_selected/{SAMPLE}_snvs.vcf.gz"
 	output:
-		vcf = temp("08_callSnvs/4_selected/{SAMPLE}.vcf.gz"),
-		vcfIndex = temp("08_callSnvs/4_selected/{SAMPLE}.vcf.gz.tbi"),
+		vcf = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz",
+		vcfIndex = "08_callSnvs/4_selected/{SAMPLE}.vcf.gz.tbi",
 		detailMetrics = "08_callSnvs/4_selected/log/{SAMPLE}.variant_calling_detail_metrics",
 		summaryMetrics = "08_callSnvs/4_selected/log/{SAMPLE}.variant_calling_summary_metrics"
 	params:

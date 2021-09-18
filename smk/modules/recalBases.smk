@@ -40,7 +40,7 @@ rule applyRecal:
 	output:
 		bam = temp("07_recalBases/bam/{SAMPLE}.bam"),
 		bamIndex = temp("07_recalBases/bam/{SAMPLE}.bai"),
-		metrics = "07_recalBases/metrics/{SAMPLE}.tsv"
+		samstats = "07_recalBases/samstats/{SAMPLE}.tsv"
 	conda:
 		"../envs/ase.yaml"
 	resources:
@@ -61,7 +61,7 @@ rule applyRecal:
             -O {output.bam} \
             --bqsr-recal-file {input.recal}
 
-		samtools stats -d {output.bam} > {output.metrics}
+		samtools stats -d {output.bam} > {output.samstats}
 		"""
 
 rule recalSecondPass:

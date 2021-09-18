@@ -1,6 +1,6 @@
 rule featureCounts:
 	input:
-		bam = expand("02_align/bam/{SAMPLE}Aligned.sortedByCoord.out.bam", SAMPLE = SAMPLES),
+		bam = expand("02_align/bam/{SAMPLE}.bam", SAMPLE = SAMPLES),
 		gtf = REFDIR + "Danio_rerio.GRCz11.101.chr.gtf.gz"
 	output:
 		counts = "02_align/featureCounts/counts.out",
