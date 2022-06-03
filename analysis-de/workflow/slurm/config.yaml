@@ -1,0 +1,25 @@
+cluster:
+  mkdir -p workflow/log/{rule} &&
+  sbatch
+    --account=biosci
+    --partition=batch
+    --nodes=1
+    --cpus-per-task={resources.cpu}
+    --ntasks={resources.ntasks}
+    --mem={resources.mem_mb}M
+    --time={resources.time}
+    --job-name={rule}-{wildcards}
+    --output=workflow/log/{rule}/{wildcards}-%j.log
+    --parsable
+restart-times: 0
+jobs: 100
+max-jobs-per-second: 2
+cluster-status: status-sacct.sh
+max-status-checks-per-second: 5
+local-cores: 1
+use-conda: True
+latency-wait: 60
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+notemp: True  ## If storage quotas permit, I prefer to hold temp files and use --delete-temp-output upon completion

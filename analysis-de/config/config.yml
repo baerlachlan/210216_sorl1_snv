@@ -1,0 +1,32 @@
+samples_tsv:
+
+fastq_ext: ".fastq.gz"
+
+paired_end:
+  activate: False
+  tags:
+
+merge_fastq:
+  activate: False
+  tags:
+
+ref:
+  species: "danio_rerio"
+  assembly: "GRCz11"
+  ensembl_release: 101
+
+trim:
+  phred_qual: 20
+  length: 35
+  extra: ""
+
+align:
+  read_length: 75
+  extra: ""
+
+count:
+  min_qual: 1
+  strandedness: 0
+  min_overlap: 35
+  frac_overlap: 0.9
+  extra: ""
