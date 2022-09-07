@@ -1,0 +1,54 @@
+import os
+import pandas as pd
+from snakemake.utils import min_version
+
+min_version("6.2.1")
+
+
+configfile: "config/config.yml"
+
+include: "rules/common.smk"
+
+## Avoid ambiguity in filenames when multiple wildcards are used
+wildcard_constraints:
+    SAMPLE = "|".join([sample for sample in samples]),
+    PAIRTAG = "|".join([tag for tag in config["paired_end"]["tags"]]),
+    MERGETAG = "|".join([tag for tag in config["merge_samples"]["tags"]]),
+
+rule all:
+    input:
+        workflow_outputs(),
+
+include: "rules/refs.smk"
+include: "rules/intervals.smk"
+if config["umi"]["add_header"]["activate"]:
+    include: "rules/addUmis.smk"
+include: "rules/trim.smk"
+include: "rules/align.smk"
+include: "rules/fastqc.smk"
+include: "rules/addRG.smk"
+if config["umi"]["activate"]:
+    include: "rules/groupUmis.smk"
+if config["merge_samples"]["activate"]:
+    include: "rules/mergeSamples.smk"
+if config["umi"]["activate"]:
+    include: "rules/markDuplicates_umi.smk"
+else:
+    include: "rules/markDuplicates.smk"
+include: "rules/splitNCigar.smk"
+if config["bootstrap_known_variants"]["activate"]:
+    include: "rules/knownVariants.smk"
+include: "rules/bqsr.smk"
+include: "rules/variants.smk"
+if config["ase_counts"]["activate"]:
+    include: "rules/ase_setup.smk"
+    include: "rules/wasp.smk"
+    include: "rules/aseRC.smk"
+    include: "rules/geneiase.smk"
+
+localrules: refs_downloadFa, refs_downloadGtf, refs_downloadKnownVariants  ## Requires internet access but not much compute so run on head node
+
+## TODO:
+##  - Remove HOME=/hpcfs/users/$USER
+##  - Remove curl from refs.smk
+##  - gatk java options

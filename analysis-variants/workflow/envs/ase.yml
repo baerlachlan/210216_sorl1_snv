@@ -1,0 +1,18 @@
+channels:
+ - bioconda
+ - conda-forge
+ - defaults
+dependencies:
+ - numpy=1.20.3
+ - scipy=1.6.3
+ - pysam=0.16.0
+ - pytables=3.6.1
+ - r-magrittr
+ - r-stringr
+ - r-dplyr
+ - r-readr
+ - r-tidyr
+ - r-purrr
+ - bioconductor-variantannotation
+ - star=2.7.7a
+ - samtools=1.11

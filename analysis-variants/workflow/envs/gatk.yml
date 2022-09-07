@@ -1,0 +1,12 @@
+channels:
+ - bioconda
+ - conda-forge
+ - defaults
+dependencies:
+ - fastqc=0.11.9
+ - fastp=0.20.1
+ - star=2.7.7a
+ - subread=2.0.1
+ - umi_tools=1.1.1
+ - gatk4=4.2.0.0
+ - samtools=1.11
