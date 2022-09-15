@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Lachlan Baer" />
+
+
+<title>Differential Gene Expression Analysis</title>
+
+<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/flatly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">210408_psen1_fADfAI_snv</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="ase_qc.html">ASE QC</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/baerlachlan/210216_sorl1_snv">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Differential Gene Expression Analysis</h1>
+<h4 class="author">Lachlan Baer</h4>
+<h4 class="date">14 September, 2022</h4>
+
+</div>
+
+
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<pre class="r"><code>suppressPackageStartupMessages({
+  ## Common
+  library(tidyverse)
+  library(magrittr)
+  library(future.apply)
+  library(here)
+  library(AnnotationHub)
+  library(purrr)
+  library(scales)
+  library(kableExtra)
+  library(tictoc)
+  library(ggrepel)
+  library(RColorBrewer)
+  library(ggpubr)
+  library(pander)
+  library(rmarkdown)
+  ## Project specific
+  library(edgeR)
+  library(fgsea)
+  library(pheatmap)
+  library(cqn)
+  library(DT)
+  library(htmltools)
+  library(gtools)
+})</code></pre>
+<pre class="r"><code>if (interactive()) setwd(here::here())
+theme_set(theme_bw())
+cores &lt;- availableCores() - 1</code></pre>
+<pre class="r"><code>source(&quot;~/bioinformatics/bioToolkit/lbFuncs.R&quot;)</code></pre>
+<div id="ensdb" class="section level2">
+<h2>EnsDb</h2>
+<pre class="r"><code>ens_species &lt;- &quot;Danio rerio&quot;
+ens_release &lt;- &quot;101&quot;
+ens_assembly &lt;- &quot;GRCz11&quot;</code></pre>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+  subset(species == ens_species) %&gt;%
+  subset(rdataclass == &quot;EnsDb&quot;)
+ahId &lt;- ah$ah_id[str_detect(ah$title, ens_release)]
+ensDb &lt;- ah[[ahId]]</code></pre>
+<pre class="r"><code>chrInfo &lt;- getChromInfoFromEnsembl(ens_assembly, release = ens_release) %&gt;%
+  dplyr::filter(coord_system == &quot;chromosome&quot;)
+## Sort by numbers then letters
+primary_chrs &lt;- chrInfo$name %&gt;%
+  mixedsort()
+## Push MT chr to end
+primary_chrs &lt;- c(
+  primary_chrs[primary_chrs != &quot;MT&quot;],
+  primary_chrs[primary_chrs == &quot;MT&quot;]
+)</code></pre>
+<pre class="r"><code>transcripts &lt;- transcripts(ensDb, filter = SeqNameFilter(primary_chrs))
+txLen &lt;- exonsBy(ensDb, &quot;tx&quot;, filter = SeqNameFilter(primary_chrs)) %&gt;%
+  width() %&gt;%
+  vapply(sum, integer(1)) %&gt;%
+  enframe(name = &quot;tx_id&quot;, value = &quot;length&quot;)
+mcols(transcripts) &lt;- mcols(transcripts)[
+  c(&quot;tx_id&quot;, &quot;gene_id&quot;, &quot;gc_content&quot;)
+] %&gt;%
+  as.data.frame() %&gt;%
+  left_join(txLen)</code></pre>
+<pre class="r"><code>geneGc &lt;- transcripts %&gt;%
+  mcols() %&gt;%
+  as_tibble() %&gt;%
+  group_by(gene_id) %&gt;%
+  summarise(
+    gc_content = sum(gc_content*length) / sum(length),
+    length = ceiling(median(length))
+  )</code></pre>
+<pre class="r"><code>genes &lt;- genes(ensDb, filter = SeqNameFilter(primary_chrs))
+mcols(genes) &lt;- mcols(genes)[
+  c(&quot;gene_id&quot;, &quot;gene_name&quot;, &quot;gene_biotype&quot;, &quot;entrezid&quot;)
+] %&gt;%
+  as.data.frame() %&gt;%
+  left_join(geneGc)</code></pre>
+<p>An <code>EnsDb</code> object was obtained for Ensembl release 101
+with the <code>AnnotationHub</code> package. This contained the
+information required to set up gene and transcript annotations.
+Gene-level estimates of GC content and length were also generated which
+are required for assessing potential biases in downstream analysis.</p>
+</div>
+<div id="metadata" class="section level2">
+<h2>Metadata</h2>
+<pre class="r"><code>metadata &lt;- read_csv(here(&quot;files/SraRunTable.txt&quot;)) %&gt;%
+  as.data.frame() %&gt;%
+  dplyr::arrange(Run) %&gt;%
+  mutate(
+    genotype = case_when(
+      Genotype == &quot;wild-type&quot; ~ &quot;WT&quot;,
+      Genotype == &quot;sorl1V1482Afs/+&quot; ~ &quot;V1482Afs_het&quot;,
+      Genotype == &quot;sorl1R122Pfs/+&quot; ~ &quot;R122Pfs_het&quot;,
+      Genotype == &quot;sorl1V1482Afs/R122Pfs&quot; ~ &quot;Trans&quot;,
+    ),
+    alias = c(
+      paste0(rep(&quot;WT&quot;, 8), seq(1, 8)),
+      paste0(rep(&quot;V1482Afs&quot;, 6), seq(1, 6)),
+      paste0(rep(&quot;R122Pfs&quot;, 4), seq(1, 4)),
+      paste0(rep(&quot;Trans&quot;, 6), seq(1, 6))
+    )
+  ) %&gt;%
+  dplyr::select(
+    sample = Run, genotype, genotype2 = Genotype, alias, gender, tank = Tank
+  )
+metadata$genotype &lt;- fct_relevel(
+  metadata$genotype,
+  c(&quot;WT&quot;, &quot;V1482Afs_het&quot;, &quot;R122Pfs_het&quot;, &quot;Trans&quot;)
+)
+genoCols &lt;- metadata$genotype %&gt;%
+  levels() %&gt;%
+  length() %&gt;%
+  brewer.pal(&quot;Set1&quot;) %&gt;%
+  setNames(levels(metadata$genotype))</code></pre>
+</div>
+<div id="counts" class="section level2">
+<h2>Counts</h2>
+<pre class="r"><code>counts &lt;- read_tsv(here(&quot;analysis-de/results/03_counts/counts.out&quot;), comment = &quot;#&quot;) %&gt;%
+  dplyr::select(-c(Chr, Start, End, Strand, Length)) %&gt;%
+  set_colnames(basename(colnames(.))) %&gt;%
+  set_colnames(str_remove(colnames(.), &quot;\\.bam&quot;))</code></pre>
+<pre class="r"><code># minLib &lt;- counts %&gt;%
+#   dplyr::select(., str_subset(colnames(.), &quot;KB&quot;)) %&gt;%
+#   colSums() %&gt;%
+#   min()
+# minCPM &lt;- as.vector(cpm(10, lib.size = minLib))
+minCPM &lt;- 1
+minSamples &lt;- metadata %&gt;%
+  group_by(genotype) %&gt;%
+  summarise(n = n()) %&gt;%
+  pull(n) %&gt;%
+  min()
+dgeList &lt;- counts %&gt;%
+  as.data.frame() %&gt;%
+  column_to_rownames(&quot;Geneid&quot;) %&gt;%
+  .[rowSums(cpm(.) &gt;= minCPM) &gt;= minSamples,] %&gt;%
+  DGEList(
+    samples = tibble(sample = colnames(.)) %&gt;%
+      left_join(metadata),
+    genes = genes[rownames(.),] %&gt;%
+      as_tibble() %&gt;%
+      dplyr::select(chromosome = seqnames, everything()) %&gt;%
+      mutate(chromosome = factor(chromosome, levels = primary_chrs))
+  ) %&gt;%
+  calcNormFactors()</code></pre>
+<pre class="r"><code>dgeList_path &lt;- here(&quot;files/dgeList.Rds&quot;)
+if (!file.exists(dgeList_path)) {
+  saveRDS(dgeList, dgeList_path)
+}</code></pre>
+<p>Gene-level count data was loaded from <code>featureCounts</code> and
+imported into <code>R</code> as a <code>DGEList</code> object. Genes
+were removed from the counts matrix if they had less than 1 CPM (~10
+reads) in more than 20 samples. This meant that each remaining gene must
+have assigned reads detected in at least one genotype group.</p>
+<p>17246 genes remained for further analysis with library sizes ranging
+from 19,889,378 to 26,788,705.</p>
+<pre class="r"><code>cpm(dgeList, log = TRUE) %&gt;%
+  as.data.frame() %&gt;%
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;sample&quot;,
+    values_to = &quot;logCPM&quot;
+  ) %&gt;%
+  left_join(metadata) %&gt;%
+  ggplot(aes(logCPM, colour = genotype, group = sample)) +
+  geom_density() +
+  scale_colour_manual(values = genoCols) +
+  labs(
+    x = &quot;logCPM&quot;,
+    y = &quot;Density&quot;,
+    colour = &quot;Genotype&quot;
+  )</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-3-1.png" alt="*Expression density plots for all samples after filtering*" width="768" />
+<p class="caption">
+<em>Expression density plots for all samples after filtering</em>
+</p>
+</div>
+</div>
+</div>
+<div id="initial-de-analysis" class="section level1">
+<h1>Initial DE analysis</h1>
+<div id="pca" class="section level2">
+<h2>PCA</h2>
+<pre class="r"><code>cpm &lt;- dgeList %&gt;%
+  cpm(log = TRUE)</code></pre>
+<pre class="r"><code>pca &lt;- cpm %&gt;%
+  t() %&gt;%
+  prcomp()
+pcaVars &lt;- percent_format(0.1)(summary(pca)$importance[&quot;Proportion of Variance&quot;,])</code></pre>
+<pre class="r"><code>pca$x %&gt;%
+  as.data.frame() %&gt;%
+  rownames_to_column(&quot;sample&quot;) %&gt;%
+  left_join(metadata) %&gt;%
+  as_tibble() %&gt;%
+  ggplot(aes(PC1, PC2, colour = genotype, fill = genotype, label = alias)) +
+  geom_point(size = 2) +
+  geom_text_repel(show.legend = FALSE) +
+  stat_ellipse(geom = &quot;polygon&quot;, alpha = 0.05, show.legend = FALSE) +
+  guides(fill = &quot;none&quot;) +
+  scale_colour_manual(values = genoCols) +
+  labs(
+    x = paste0(&quot;PC1 (&quot;, pcaVars[[&quot;PC1&quot;]], &quot;)&quot;),
+    y = paste0(&quot;PC2 (&quot;, pcaVars[[&quot;PC2&quot;]], &quot;)&quot;),
+    colour = &quot;Genotype&quot;
+  )</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-6-1.png" alt="*Principal Component Analysis of gene-level counts*" width="768" />
+<p class="caption">
+<em>Principal Component Analysis of gene-level counts</em>
+</p>
+</div>
+<p>A Principal Component Analysis (PCA) was performed using the sample
+logCPM values. It appears there is no clustering of genotypes, which may
+be due to the subtlty of the mutations and early time point (6 months).
+Additionally, PC1 only accounts for 53.4% of the variance.</p>
+</div>
+<div id="design" class="section level2">
+<h2>Design</h2>
+<p>The design matrix was defined containing an intercept representing
+baseline expression in wildtype samples. The remaining two columns
+represent the presence of either the EofAD or fAI mutant alleles.</p>
+<pre class="r"><code>design &lt;- model.matrix(~genotype, data = dgeList$samples) %&gt;%
+  set_colnames(str_remove(colnames(.), &quot;genotype&quot;))</code></pre>
+<pre class="r"><code>pheatmap(
+  design[metadata$sample,],
+  cluster_cols = FALSE,
+  cluster_rows = FALSE,
+  color = c(&quot;white&quot;, &quot;grey50&quot;),
+  annotation_row = dgeList$samples[&quot;genotype&quot;],
+  annotation_colors = list(genotype = genoCols),
+  angle_col = &quot;315&quot;,
+  legend = FALSE
+)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-8-1.png" alt="*Visualisation of the design matrix*" width="576" />
+<p class="caption">
+<em>Visualisation of the design matrix</em>
+</p>
+</div>
+</div>
+<div id="model-fitting" class="section level2">
+<h2>Model fitting</h2>
+<p>Genewise negative binomial generalized linear models were using the
+<code>glmFit()</code> function of the <code>edgeR</code> package.
+Likelihood ratio tests were then performed for the coefficients in the
+model with <code>glmLRT()</code>. Here the null hypothesis, <span
+class="math inline">\(H_0\)</span>, is testing that the true values of
+the coefficients are equal to 0. Due to the subtle effects of the
+mutation outlined in the PCA, genes were considered to be DE if they had
+an FDR-adjusted p-value &lt; 0.05, as opposed to more stringent error
+rate controls such as the Bonferroni method.</p>
+<pre class="r"><code>alpha &lt;- 0.05
+minLfc &lt;- 1
+fit &lt;- estimateDisp(dgeList, design) %&gt;%
+  glmFit()
+topTables &lt;- colnames(design)[2:4] %&gt;%
+  sapply(function(x){
+    glmLRT(fit, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+      dplyr::select(
+        gene_id, gene_name, logFC, logCPM, PValue, FDR, everything()
+      ) %&gt;%
+      mutate(
+        coef = x,
+        bonfP = p.adjust(PValue, &quot;bonf&quot;),
+        DE = ifelse(FDR &lt; 0.05, TRUE, FALSE)
+      )
+  }, simplify = FALSE)</code></pre>
+<p>With this criteria, the following genes were classified as DE:</p>
+<pre class="r"><code>topTables[[1]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for V1482Afs_het genotype&quot;,
+      &quot;in comparison to wildtype&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 3 differentially expressed genes for V1482Afs_het genotype in
+comparison to wildtype
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000069464
+</td>
+<td style="text-align:left;">
+cox7a1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.31
+</td>
+<td style="text-align:left;">
+1.02
+</td>
+<td style="text-align:left;">
+6.94e-11
+</td>
+<td style="text-align:left;">
+1.20e-06
+</td>
+<td style="text-align:left;">
+1.20e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000092191
+</td>
+<td style="text-align:left;">
+CR318588.1
+</td>
+<td style="text-align:left;">
+18
+</td>
+<td style="text-align:left;">
+3.58
+</td>
+<td style="text-align:left;">
+2.13
+</td>
+<td style="text-align:left;">
+1.58e-07
+</td>
+<td style="text-align:left;">
+1.36e-03
+</td>
+<td style="text-align:left;">
+2.72e-03
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000103692
+</td>
+<td style="text-align:left;">
+p4ha3
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.05
+</td>
+<td style="text-align:left;">
+-0.29
+</td>
+<td style="text-align:left;">
+6.27e-07
+</td>
+<td style="text-align:left;">
+3.61e-03
+</td>
+<td style="text-align:left;">
+1.08e-02
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>topTables[[2]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for R122Pfs_het genotype&quot;,
+      &quot;in comparison to wildtype&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 5 differentially expressed genes for R122Pfs_het genotype in
+comparison to wildtype
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000016290
+</td>
+<td style="text-align:left;">
+clca1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-8.41
+</td>
+<td style="text-align:left;">
+4.14
+</td>
+<td style="text-align:left;">
+1.28e-16
+</td>
+<td style="text-align:left;">
+2.21e-12
+</td>
+<td style="text-align:left;">
+2.21e-12
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000042332
+</td>
+<td style="text-align:left;">
+plin2
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.62
+</td>
+<td style="text-align:left;">
+2.60
+</td>
+<td style="text-align:left;">
+1.07e-10
+</td>
+<td style="text-align:left;">
+9.20e-07
+</td>
+<td style="text-align:left;">
+1.84e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000097580
+</td>
+<td style="text-align:left;">
+BX663519.1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-3.55
+</td>
+<td style="text-align:left;">
+1.19
+</td>
+<td style="text-align:left;">
+7.62e-10
+</td>
+<td style="text-align:left;">
+4.38e-06
+</td>
+<td style="text-align:left;">
+1.31e-05
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000098012
+</td>
+<td style="text-align:left;">
+itgae.1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-4.64
+</td>
+<td style="text-align:left;">
+1.28
+</td>
+<td style="text-align:left;">
+2.52e-06
+</td>
+<td style="text-align:left;">
+1.09e-02
+</td>
+<td style="text-align:left;">
+4.35e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000035438
+</td>
+<td style="text-align:left;">
+myhc4
+</td>
+<td style="text-align:left;">
+5
+</td>
+<td style="text-align:left;">
+4.91
+</td>
+<td style="text-align:left;">
+1.49
+</td>
+<td style="text-align:left;">
+8.64e-06
+</td>
+<td style="text-align:left;">
+2.98e-02
+</td>
+<td style="text-align:left;">
+1.49e-01
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>topTables[[3]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for Trans genotype&quot;,
+      &quot;in comparison to wildtype&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 7 differentially expressed genes for Trans genotype in comparison to
+wildtype
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000073893
+</td>
+<td style="text-align:left;">
+dnase2
+</td>
+<td style="text-align:left;">
+16
+</td>
+<td style="text-align:left;">
+-1.17
+</td>
+<td style="text-align:left;">
+1.83
+</td>
+<td style="text-align:left;">
+3.83e-07
+</td>
+<td style="text-align:left;">
+6.22e-03
+</td>
+<td style="text-align:left;">
+6.60e-03
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000069464
+</td>
+<td style="text-align:left;">
+cox7a1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-1.69
+</td>
+<td style="text-align:left;">
+1.02
+</td>
+<td style="text-align:left;">
+7.22e-07
+</td>
+<td style="text-align:left;">
+6.22e-03
+</td>
+<td style="text-align:left;">
+1.24e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000098004
+</td>
+<td style="text-align:left;">
+ftr91
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.61
+</td>
+<td style="text-align:left;">
+-0.25
+</td>
+<td style="text-align:left;">
+1.27e-06
+</td>
+<td style="text-align:left;">
+7.29e-03
+</td>
+<td style="text-align:left;">
+2.19e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000055683
+</td>
+<td style="text-align:left;">
+pimr191
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+2.32
+</td>
+<td style="text-align:left;">
+-0.68
+</td>
+<td style="text-align:left;">
+3.21e-06
+</td>
+<td style="text-align:left;">
+1.38e-02
+</td>
+<td style="text-align:left;">
+5.53e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000012177
+</td>
+<td style="text-align:left;">
+rab4b
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.12
+</td>
+<td style="text-align:left;">
+3.05
+</td>
+<td style="text-align:left;">
+4.82e-06
+</td>
+<td style="text-align:left;">
+1.66e-02
+</td>
+<td style="text-align:left;">
+8.31e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000097373
+</td>
+<td style="text-align:left;">
+ftr90
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-1.79
+</td>
+<td style="text-align:left;">
+1.86
+</td>
+<td style="text-align:left;">
+1.30e-05
+</td>
+<td style="text-align:left;">
+3.68e-02
+</td>
+<td style="text-align:left;">
+2.25e-01
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000011113
+</td>
+<td style="text-align:left;">
+chrna10a
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.00
+</td>
+<td style="text-align:left;">
+1.41
+</td>
+<td style="text-align:left;">
+1.49e-05
+</td>
+<td style="text-align:left;">
+3.68e-02
+</td>
+<td style="text-align:left;">
+2.58e-01
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>deCols &lt;- c(`TRUE` = &quot;red&quot;, `FALSE` = &quot;grey50&quot;)</code></pre>
+</div>
+<div id="bias-checks" class="section level2">
+<h2>Bias checks</h2>
+<div id="ma-plots" class="section level3">
+<h3>MA plots</h3>
+<pre class="r"><code>topTables %&gt;%
+  bind_rows() %&gt;%
+  arrange(DE) %&gt;%
+  ggplot(aes(logCPM, logFC)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef, nrow = 2) +
+  scale_y_continuous(breaks = seq(-8, 8, by = 2)) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-12-1.png" alt="*MA plots checking for logFC artefacts across the range of expression values. The average logFC appears consistant across all expression values for both comparisons*" width="768" />
+<p class="caption">
+<em>MA plots checking for logFC artefacts across the range of expression
+values. The average logFC appears consistant across all expression
+values for both comparisons</em>
+</p>
+</div>
+</div>
+<div id="gc-content" class="section level3">
+<h3>GC content</h3>
+<pre class="r"><code>topTables %&gt;%
+  bind_rows() %&gt;%
+  mutate(stat = -sign(logFC)*log10(PValue)) %&gt;%
+  ggplot(aes(gc_content, stat)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef) +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  labs(
+    x = &quot; Gene GC content (%)&quot;,
+    y = &quot;Ranking Statistic&quot;
+  ) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-13-1.png" alt="*GC content bias for differential expression. GC content is shown against the ranking statistic, calculated by -log10(p) multiple by the sign of logFC. Differentially expressed genes are labelled red. Small biases were observed for both comparisons. In particular, the fAI genotype shows a well-documented pattern of GC bias, whereby both low and high GC proportions are affected.*" width="768" />
+<p class="caption">
+<em>GC content bias for differential expression. GC content is shown
+against the ranking statistic, calculated by -log10(p) multiple by the
+sign of logFC. Differentially expressed genes are labelled red. Small
+biases were observed for both comparisons. In particular, the fAI
+genotype shows a well-documented pattern of GC bias, whereby both low
+and high GC proportions are affected.</em>
+</p>
+</div>
+</div>
+<div id="gene-length" class="section level3">
+<h3>Gene length</h3>
+<pre class="r"><code>topTables %&gt;%
+  bind_rows() %&gt;%
+  mutate(stat = -sign(logFC)*log10(PValue)) %&gt;%
+  ggplot(aes(length, stat)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef)  +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  labs(
+    x = &quot;GC length&quot;,
+    y = &quot;Ranking Statistic&quot;
+  ) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  scale_x_log10(labels = comma) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-14-1.png" alt="*Gene length bias for differential expression. Gene length is shown against the ranking statistic, calculated by -log10(p) multiple by the sign of logFC. Differentially expressed genes are labelled red. Minimal bias is observed for the fAD genotype, but the fAI genotype shows a bias for larger genes.*" width="768" />
+<p class="caption">
+<em>Gene length bias for differential expression. Gene length is shown
+against the ranking statistic, calculated by -log10(p) multiple by the
+sign of logFC. Differentially expressed genes are labelled red. Minimal
+bias is observed for the fAD genotype, but the fAI genotype shows a bias
+for larger genes.</em>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="conditional-quantile-normalisation" class="section level1">
+<h1>Conditional Quantile Normalisation</h1>
+<p>Conditional Quantile Normalisation (CQN) is a procedure that can
+account for GC content and length biases in differential expression and
+is implemented with package <code>cqn</code>. It does this by making by
+calculating offset values that can be incorporated into the GLM. Both GC
+content and length were noted as being of concern and were therefore
+used to calculate offsets. The resulting <code>glm.offset</code> values
+from the output of <code>cqn</code> were added to the original
+<code>DGEList</code> object.</p>
+<pre class="r"><code># cqn &lt;- cqn(
+#   counts = dgeList$counts,
+#   x = dgeList$genes$gc_content,
+#   lengths = rep(1000, times = nrow(dgeList)),
+#   sizeFactors = dgeList$samples$lib.size,
+#   lengthMethod = &quot;fixed&quot;
+# )
+cqn &lt;- cqn(
+  counts = dgeList$counts,
+  x = dgeList$genes$gc_content,
+  lengths = dgeList$genes$length,
+  sizeFactors = dgeList$samples$lib.size
+)</code></pre>
+<pre class="r"><code>par(mfrow = c(1, 2))
+cqnplot(cqn, n = 1, xlab = &quot;GC Content&quot;, col = genoCols)
+cqnplot(cqn, n = 2, xlab = &quot;Length&quot;, col = genoCols)
+legend(
+  &quot;bottomright&quot;,
+  legend = levels(metadata$genotype),
+  col = genoCols,
+  lty = 1
+)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-16-1.png" alt="*Model fits for GC content and gene length under the CQN model. *" width="768" />
+<p class="caption">
+<em>Model fits for GC content and gene length under the CQN model. </em>
+</p>
+</div>
+<pre class="r"><code>par(mfrow = c(1, 1))</code></pre>
+<pre class="r"><code>dgeList$offset &lt;- cqn$glm.offset</code></pre>
+<div id="pca-1" class="section level2">
+<h2>PCA</h2>
+<pre class="r"><code>cpm_cqn &lt;- cqn %&gt;%
+  with(y + offset)</code></pre>
+<pre class="r"><code>pca_cqn &lt;- cpm_cqn %&gt;%
+  t() %&gt;%
+  prcomp()
+pcaVars &lt;- percent_format(0.1)(summary(pca_cqn)$importance[&quot;Proportion of Variance&quot;,])</code></pre>
+<pre class="r"><code>pca_cqn$x %&gt;%
+  as.data.frame() %&gt;%
+  rownames_to_column(&quot;sample&quot;) %&gt;%
+  left_join(metadata) %&gt;%
+  as_tibble() %&gt;%
+  ggplot(aes(PC1, PC2, colour = genotype, fill = genotype, label = alias)) +
+  geom_point(size = 2) +
+  geom_text_repel(show.legend = FALSE) +
+  stat_ellipse(geom = &quot;polygon&quot;, alpha = 0.05, show.legend = FALSE) +
+  guides(fill = &quot;none&quot;) +
+  scale_colour_manual(values = genoCols) +
+  labs(
+    x = paste0(&quot;PC1 (&quot;, pcaVars[[&quot;PC1&quot;]], &quot;)&quot;),
+    y = paste0(&quot;PC2 (&quot;, pcaVars[[&quot;PC2&quot;]], &quot;)&quot;),
+    colour = &quot;Genotype&quot;
+  )</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-20-1.png" alt="*Principal Component Analysis of gene-level counts post CQN.*" width="768" />
+<p class="caption">
+<em>Principal Component Analysis of gene-level counts post CQN.</em>
+</p>
+</div>
+<p>There was very little improvement in separation of genotype groups
+after CQN, and PC1 still only accounted for 43.7% of the variation. The
+x-axis of the PCA plot appears to be flipped, but this normal as the
+signs of PC values are somewhat arbitrary.</p>
+</div>
+<div id="model-fitting-1" class="section level2">
+<h2>Model fitting</h2>
+<p>After incorporation of the offset values into the
+<code>DGEList</code> object, dispersion estimates were calculated and
+models were fitted as done pre CQN.</p>
+<pre class="r"><code>fit_cqn &lt;- estimateDisp(dgeList, design) %&gt;%
+  glmFit()
+topTables_cqn &lt;- colnames(design)[2:4] %&gt;%
+  sapply(function(x){
+    glmLRT(fit_cqn, coef = x) %&gt;%
+      topTags(n = Inf) %&gt;%
+      .[[&quot;table&quot;]] %&gt;%
+      as_tibble() %&gt;%
+      arrange(PValue) %&gt;%
+      dplyr::select(
+        gene_id, gene_name, logFC, logCPM, PValue, FDR, everything()
+      ) %&gt;%
+      mutate(
+        coef = x,
+        bonfP = p.adjust(PValue, &quot;bonf&quot;),
+        DE = ifelse(FDR &lt; 0.05, TRUE, FALSE)
+      )
+  }, simplify = FALSE)</code></pre>
+<pre class="r"><code>topTables_cqn[[1]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for V1482Afs_het genotype&quot;,
+      &quot;in comparison to wildtype after CQN&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 2 differentially expressed genes for V1482Afs_het genotype in
+comparison to wildtype after CQN
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000069464
+</td>
+<td style="text-align:left;">
+cox7a1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.43
+</td>
+<td style="text-align:left;">
+1.02
+</td>
+<td style="text-align:left;">
+9.20e-13
+</td>
+<td style="text-align:left;">
+1.59e-08
+</td>
+<td style="text-align:left;">
+1.59e-08
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000092191
+</td>
+<td style="text-align:left;">
+CR318588.1
+</td>
+<td style="text-align:left;">
+18
+</td>
+<td style="text-align:left;">
+3.75
+</td>
+<td style="text-align:left;">
+2.13
+</td>
+<td style="text-align:left;">
+4.06e-08
+</td>
+<td style="text-align:left;">
+3.50e-04
+</td>
+<td style="text-align:left;">
+7.01e-04
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>topTables_cqn[[2]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for R122Pfs_het genotype&quot;,
+      &quot;in comparison to wildtype after CQN&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 4 differentially expressed genes for R122Pfs_het genotype in
+comparison to wildtype after CQN
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000016290
+</td>
+<td style="text-align:left;">
+clca1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-7.05
+</td>
+<td style="text-align:left;">
+4.14
+</td>
+<td style="text-align:left;">
+4.11e-16
+</td>
+<td style="text-align:left;">
+7.09e-12
+</td>
+<td style="text-align:left;">
+7.09e-12
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000042332
+</td>
+<td style="text-align:left;">
+plin2
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.58
+</td>
+<td style="text-align:left;">
+2.60
+</td>
+<td style="text-align:left;">
+1.74e-09
+</td>
+<td style="text-align:left;">
+1.50e-05
+</td>
+<td style="text-align:left;">
+3.00e-05
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000097580
+</td>
+<td style="text-align:left;">
+BX663519.1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-2.98
+</td>
+<td style="text-align:left;">
+1.19
+</td>
+<td style="text-align:left;">
+2.27e-08
+</td>
+<td style="text-align:left;">
+1.30e-04
+</td>
+<td style="text-align:left;">
+3.91e-04
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000054748
+</td>
+<td style="text-align:left;">
+cuedc1b
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.62
+</td>
+<td style="text-align:left;">
+3.63
+</td>
+<td style="text-align:left;">
+1.80e-07
+</td>
+<td style="text-align:left;">
+7.78e-04
+</td>
+<td style="text-align:left;">
+3.11e-03
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>topTables_cqn[[3]] %&gt;%
+  dplyr::filter(DE) %&gt;%
+  dplyr::select(gene_id, gene_name, chromosome, logFC, logCPM, PValue, FDR, bonfP) %&gt;%
+  mutate(
+    logCPM = formatC(logCPM, digits = 2, format = &quot;f&quot;),
+    logFC = formatC(logFC, digits = 2, format = &quot;f&quot;),
+    PValue = formatC(PValue, digits = 2, format = &quot;e&quot;),
+    FDR = formatC(FDR, digits = 2, format = &quot;e&quot;),
+    bonfP = formatC(bonfP, digits = 2, format = &quot;e&quot;),
+  ) %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = paste(
+      &quot;The&quot;, nrow(.), &quot;differentially expressed genes for Trans genotype&quot;,
+      &quot;in comparison to wildtype after CQN&quot;
+    )
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+The 8 differentially expressed genes for Trans genotype in comparison to
+wildtype after CQN
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+gene_id
+</th>
+<th style="text-align:left;">
+gene_name
+</th>
+<th style="text-align:left;">
+chromosome
+</th>
+<th style="text-align:left;">
+logFC
+</th>
+<th style="text-align:left;">
+logCPM
+</th>
+<th style="text-align:left;">
+PValue
+</th>
+<th style="text-align:left;">
+FDR
+</th>
+<th style="text-align:left;">
+bonfP
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000054748
+</td>
+<td style="text-align:left;">
+cuedc1b
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.60
+</td>
+<td style="text-align:left;">
+3.63
+</td>
+<td style="text-align:left;">
+1.88e-08
+</td>
+<td style="text-align:left;">
+3.25e-04
+</td>
+<td style="text-align:left;">
+3.25e-04
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000013892
+</td>
+<td style="text-align:left;">
+sorl1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-0.45
+</td>
+<td style="text-align:left;">
+6.17
+</td>
+<td style="text-align:left;">
+6.86e-08
+</td>
+<td style="text-align:left;">
+5.92e-04
+</td>
+<td style="text-align:left;">
+1.18e-03
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000073893
+</td>
+<td style="text-align:left;">
+dnase2
+</td>
+<td style="text-align:left;">
+16
+</td>
+<td style="text-align:left;">
+-1.11
+</td>
+<td style="text-align:left;">
+1.83
+</td>
+<td style="text-align:left;">
+2.25e-07
+</td>
+<td style="text-align:left;">
+1.29e-03
+</td>
+<td style="text-align:left;">
+3.87e-03
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000069464
+</td>
+<td style="text-align:left;">
+cox7a1
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-1.64
+</td>
+<td style="text-align:left;">
+1.02
+</td>
+<td style="text-align:left;">
+5.66e-07
+</td>
+<td style="text-align:left;">
+2.44e-03
+</td>
+<td style="text-align:left;">
+9.76e-03
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000012177
+</td>
+<td style="text-align:left;">
+rab4b
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.09
+</td>
+<td style="text-align:left;">
+3.05
+</td>
+<td style="text-align:left;">
+8.03e-07
+</td>
+<td style="text-align:left;">
+2.77e-03
+</td>
+<td style="text-align:left;">
+1.39e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000011113
+</td>
+<td style="text-align:left;">
+chrna10a
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.04
+</td>
+<td style="text-align:left;">
+1.41
+</td>
+<td style="text-align:left;">
+2.05e-06
+</td>
+<td style="text-align:left;">
+5.88e-03
+</td>
+<td style="text-align:left;">
+3.53e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000097247
+</td>
+<td style="text-align:left;">
+BX322555.3
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+-0.83
+</td>
+<td style="text-align:left;">
+3.26
+</td>
+<td style="text-align:left;">
+5.57e-06
+</td>
+<td style="text-align:left;">
+1.37e-02
+</td>
+<td style="text-align:left;">
+9.61e-02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSDARG00000098004
+</td>
+<td style="text-align:left;">
+ftr91
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+1.49
+</td>
+<td style="text-align:left;">
+-0.25
+</td>
+<td style="text-align:left;">
+8.16e-06
+</td>
+<td style="text-align:left;">
+1.76e-02
+</td>
+<td style="text-align:left;">
+1.41e-01
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="bias-checks-1" class="section level2">
+<h2>Bias checks</h2>
+<div id="ma-plots-1" class="section level3">
+<h3>MA plots</h3>
+<pre class="r"><code>topTables_cqn %&gt;%
+  bind_rows() %&gt;%
+  arrange(DE) %&gt;%
+  ggplot(aes(logCPM, logFC)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef, nrow = 2) +
+  scale_y_continuous(breaks = seq(-8, 8, by = 2)) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-23-1.png" alt="*MA plots checking for logFC artefacts across the range of expression values. The average logFC remains consistant across all expression values for both comparisons after CQN*" width="768" />
+<p class="caption">
+<em>MA plots checking for logFC artefacts across the range of expression
+values. The average logFC remains consistant across all expression
+values for both comparisons after CQN</em>
+</p>
+</div>
+</div>
+<div id="gc-content-1" class="section level3">
+<h3>GC content</h3>
+<pre class="r"><code>topTables_cqn %&gt;%
+  bind_rows() %&gt;%
+  mutate(stat = -sign(logFC)*log10(PValue)) %&gt;%
+  ggplot(aes(gc_content, stat)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef)  +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  labs(
+    x = &quot;Gene GC content (%)&quot;,
+    y = &quot;Ranking Statistic&quot;
+  ) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-24-1.png" alt="*GC content bias for differential expression. GC content is shown against the ranking statistic, calculated by -log10(p) multiple by the sign of logFC. Differentially expressed genes are labelled red. No improvement of GC bias was observed post-CQN. In fact, GC bias appeared worse than pre-CQN.*" width="768" />
+<p class="caption">
+<em>GC content bias for differential expression. GC content is shown
+against the ranking statistic, calculated by -log10(p) multiple by the
+sign of logFC. Differentially expressed genes are labelled red. No
+improvement of GC bias was observed post-CQN. In fact, GC bias appeared
+worse than pre-CQN.</em>
+</p>
+</div>
+</div>
+<div id="gene-length-1" class="section level3">
+<h3>Gene length</h3>
+<pre class="r"><code>topTables_cqn %&gt;%
+  bind_rows() %&gt;%
+  mutate(stat = -sign(logFC)*log10(PValue)) %&gt;%
+  ggplot(aes(length, stat)) +
+  geom_point(aes(colour = DE), alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  facet_wrap(~coef)  +
+  geom_text_repel(
+    aes(label = gene_name, colour = DE),
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  labs(
+    x = &quot;GC length&quot;,
+    y = &quot;Ranking Statistic&quot;
+  ) +
+  coord_cartesian(ylim = c(-10, 10)) +
+  scale_x_log10(labels = comma) +
+  scale_colour_manual(values = deCols) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-25-1.png" alt="*Gene length bias for differential expression. Gene length is shown against the ranking statistic, calculated by -log10(p) multiple by the sign of logFC. Differentially expressed genes are labelled red. No improvement of gene length bias was observed for either genotype post-CQN.*" width="768" />
+<p class="caption">
+<em>Gene length bias for differential expression. Gene length is shown
+against the ranking statistic, calculated by -log10(p) multiple by the
+sign of logFC. Differentially expressed genes are labelled red. No
+improvement of gene length bias was observed for either genotype
+post-CQN.</em>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="results" class="section level1">
+<h1>Results</h1>
+<p>Conditional quantile normalised data was not chosen for this analysis
+as it did not improve gene GC and length biases.</p>
+<pre class="r"><code>topTables_chosen &lt;- topTables</code></pre>
+<pre class="r"><code>topTables_chosen %&gt;%
+  bind_rows() %&gt;%
+  ggplot(aes(logFC, -log10(PValue), colour = DE)) +
+  geom_point(alpha = 0.4) +
+  geom_text_repel(
+    aes(label = gene_name),
+    size = 3,
+    data = . %&gt;% dplyr::filter(DE)
+  ) +
+  geom_text_repel(
+    aes(label = gene_name),
+    size = 3,
+    data = . %&gt;% dplyr::filter(!DE, logFC &lt; -3)
+  ) +
+  facet_wrap(~coef, nrow = 1) +
+  scale_colour_manual(values = deCols) +
+  scale_x_continuous(breaks = seq(-8, 8, by = 2)) +
+  coord_cartesian(ylim = c(0, 10)) +
+  labs(y = log10plab) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<div class="figure" style="text-align: center">
+<img src="de_files/figure-html/unnamed-chunk-27-1.png" alt="*Volcano plots showing -log10(p) against logFC. Genes determined to be DE are coloured red.*" width="768" />
+<p class="caption">
+<em>Volcano plots showing -log10(p) against logFC. Genes determined to
+be DE are coloured red.</em>
+</p>
+</div>
+<pre class="r"><code>geneLabeller &lt;- as_labeller(
+  structure(dgeList$genes$gene_name, names = dgeList$genes$gene_id)
+)</code></pre>
+<pre class="r"><code>comp_samples &lt;- lapply(c(&quot;(V1482Afs_het|WT)&quot;, &quot;(R122Pfs_het|WT)&quot;), function(comp){
+  metadata %&gt;%
+    dplyr::filter(str_detect(genotype, comp)) %&gt;%
+    pull(sample)
+}) %&gt;%
+  set_names(c(&quot;V1482Afs_het&quot;, &quot;R122Pfs_het&quot;))</code></pre>
+<pre class="r"><code>deGenes &lt;- lapply(topTables_chosen[1:2], function(x){
+  dplyr::filter(x, DE) %&gt;%
+    pull(gene_id)
+})
+deCpmPlots &lt;- map2(deGenes, comp_samples, function(genes, samples){
+  if (length(genes)) {
+    cpms &lt;- cpm[genes,] %&gt;%
+      as.data.frame() %&gt;%
+      rownames_to_column(&quot;gene_id&quot;) %&gt;%
+      gather(key = &quot;sample&quot;, value = logCPM, -gene_id) %&gt;%
+      as_tibble() %&gt;%
+      left_join(metadata[,c(&quot;sample&quot;, &quot;genotype&quot;)])
+    dplyr::filter(cpms, sample %in% samples) %&gt;%
+      ggplot(aes(genotype, logCPM)) +
+      geom_boxplot(aes(fill = genotype)) +
+      labs(title = paste(names(genes), &quot;DE genes&quot;)) +
+      facet_wrap(
+        ~gene_id,
+        labeller = geneLabeller,
+        ncol = 5
+      ) +
+      theme(
+        legend.position = &quot;none&quot;,
+        title = element_text(face = &quot;bold&quot;)
+      )
+  }
+})</code></pre>
+<pre class="r"><code>manPlots &lt;- lapply(topTables_chosen, function(topTable){
+  man &lt;- topTable %&gt;%
+    mutate(mid = (start + end) / 2) %&gt;%
+    dplyr::select(gene_id, gene_name, chromosome, mid, FDR) %&gt;%
+    group_by(chromosome) %&gt;%
+    summarise(chrLen = max(mid)) %&gt;%
+    mutate(chrSt = cumsum(chrLen)-chrLen) %&gt;%
+    dplyr::select(-chrLen) %&gt;% 
+    left_join(topTable) %&gt;%
+    mutate(mid = (start + end) / 2) %&gt;%
+    mutate(midCum = chrSt + mid) %&gt;%
+    mutate(
+      colour = ifelse(chromosome %in% primary_chrs[c(TRUE, FALSE)], &quot;a&quot;, &quot;b&quot;),
+      colour = ifelse(chromosome == &quot;15&quot;, &quot;c&quot;, colour)
+    )
+  axis &lt;- man %&gt;%
+    group_by(chromosome) %&gt;%
+    summarise(center = (max(midCum) + min(midCum)) / 2)
+  ggplot(man, aes(x = midCum, y = -log10(PValue))) +
+    geom_point(aes(colour = colour, fill = chromosome, shape = DE), alpha = 1, size = 2) +
+    scale_color_manual(values = c(&quot;grey50&quot;, &quot;grey70&quot;, &quot;red&quot;)) +
+    scale_shape_manual(values = c(20, 17)) +
+    scale_x_continuous(label = axis$chromosome, breaks = axis$center) +
+    scale_y_continuous(expand = c(0, 0)) +
+    coord_cartesian(clip = &quot;off&quot;) +
+    labs(
+      # title = paste0(unique(topTable$contrast)),
+      x = &quot;Chromosome&quot;,
+      y = expression(paste(-log[10], &quot;(p)&quot;))
+    ) +
+    # geom_text_repel(
+    #   data = dplyr::filter(man, DE),
+    #   aes(label = gene_name, colour = colour),
+    #   size = 2.5,
+    #   max.overlaps = 50
+    # ) +
+    theme(
+      legend.position=&quot;none&quot;,
+      panel.border = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+})
+manPlots</code></pre>
+<pre><code>## $V1482Afs_het</code></pre>
+<p><img src="de_files/figure-html/unnamed-chunk-31-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre><code>## 
+## $R122Pfs_het</code></pre>
+<p><img src="de_files/figure-html/unnamed-chunk-31-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre><code>## 
+## $Trans</code></pre>
+<p><img src="de_files/figure-html/unnamed-chunk-31-3.png" width="768" style="display: block; margin: auto;" /></p>
+<div id="data-export" class="section level2">
+<h2>Data export</h2>
+<p>Final results were exported as Rds files for further analysis.</p>
+<pre class="r"><code>saveRDS(topTables, here(&quot;files/topTables.Rds&quot;))
+saveRDS(topTables_cqn, here(&quot;files/topTables_cqn.Rds&quot;))</code></pre>
+<pre class="r"><code>sessionInfo() %&gt;%
+  pander()</code></pre>
+<p><strong>R version 4.2.1 (2022-06-23)</strong></p>
+<p><strong>Platform:</strong> x86_64-pc-linux-gnu (64-bit)</p>
+<p><strong>locale:</strong> <em>LC_CTYPE=en_AU.UTF-8</em>,
+<em>LC_NUMERIC=C</em>, <em>LC_TIME=en_AU.UTF-8</em>,
+<em>LC_COLLATE=en_AU.UTF-8</em>, <em>LC_MONETARY=en_AU.UTF-8</em>,
+<em>LC_MESSAGES=en_AU.UTF-8</em>, <em>LC_PAPER=en_AU.UTF-8</em>,
+<em>LC_NAME=C</em>, <em>LC_ADDRESS=C</em>, <em>LC_TELEPHONE=C</em>,
+<em>LC_MEASUREMENT=en_AU.UTF-8</em> and <em>LC_IDENTIFICATION=C</em></p>
+<p><strong>attached base packages:</strong> <em>stats4</em>,
+<em>splines</em>, <em>stats</em>, <em>graphics</em>, <em>grDevices</em>,
+<em>utils</em>, <em>datasets</em>, <em>methods</em> and
+<em>base</em></p>
+<p><strong>other attached packages:</strong>
+<em>ensembldb(v.2.20.1)</em>, <em>AnnotationFilter(v.1.20.0)</em>,
+<em>GenomicFeatures(v.1.48.1)</em>, <em>AnnotationDbi(v.1.58.0)</em>,
+<em>Biobase(v.2.56.0)</em>, <em>GenomicRanges(v.1.48.0)</em>,
+<em>GenomeInfoDb(v.1.32.2)</em>, <em>IRanges(v.2.30.0)</em>,
+<em>S4Vectors(v.0.34.0)</em>, <em>gtools(v.3.9.2.1)</em>,
+<em>htmltools(v.0.5.2)</em>, <em>DT(v.0.23)</em>,
+<em>cqn(v.1.42.0)</em>, <em>quantreg(v.5.93)</em>,
+<em>SparseM(v.1.81)</em>, <em>preprocessCore(v.1.58.0)</em>,
+<em>nor1mix(v.1.3-0)</em>, <em>mclust(v.5.4.10)</em>,
+<em>pheatmap(v.1.0.12)</em>, <em>fgsea(v.1.22.0)</em>,
+<em>edgeR(v.3.38.1)</em>, <em>limma(v.3.52.1)</em>,
+<em>rmarkdown(v.2.14)</em>, <em>pander(v.0.6.5)</em>,
+<em>ggpubr(v.0.4.0)</em>, <em>RColorBrewer(v.1.1-3)</em>,
+<em>ggrepel(v.0.9.1)</em>, <em>tictoc(v.1.0.1)</em>,
+<em>kableExtra(v.1.3.4)</em>, <em>scales(v.1.2.0)</em>,
+<em>AnnotationHub(v.3.4.0)</em>, <em>BiocFileCache(v.2.4.0)</em>,
+<em>dbplyr(v.2.1.1)</em>, <em>BiocGenerics(v.0.42.0)</em>,
+<em>here(v.1.0.1)</em>, <em>future.apply(v.1.9.0)</em>,
+<em>future(v.1.25.0)</em>, <em>magrittr(v.2.0.3)</em>,
+<em>forcats(v.0.5.1)</em>, <em>stringr(v.1.4.0)</em>,
+<em>dplyr(v.1.0.9)</em>, <em>purrr(v.0.3.4)</em>,
+<em>readr(v.2.1.2)</em>, <em>tidyr(v.1.2.0)</em>,
+<em>tibble(v.3.1.7)</em>, <em>ggplot2(v.3.3.6)</em> and
+<em>tidyverse(v.1.3.1)</em></p>
+<p><strong>loaded via a namespace (and not attached):</strong>
+<em>utf8(v.1.2.2)</em>, <em>tidyselect(v.1.1.2)</em>,
+<em>RSQLite(v.2.2.14)</em>, <em>htmlwidgets(v.1.5.4)</em>,
+<em>grid(v.4.2.1)</em>, <em>BiocParallel(v.1.30.2)</em>,
+<em>munsell(v.0.5.0)</em>, <em>codetools(v.0.2-18)</em>,
+<em>withr(v.2.5.0)</em>, <em>colorspace(v.2.0-3)</em>,
+<em>filelock(v.1.0.2)</em>, <em>highr(v.0.9)</em>,
+<em>knitr(v.1.39)</em>, <em>rstudioapi(v.0.13)</em>,
+<em>ggsignif(v.0.6.3)</em>, <em>listenv(v.0.8.0)</em>,
+<em>labeling(v.0.4.2)</em>, <em>MatrixGenerics(v.1.8.0)</em>,
+<em>GenomeInfoDbData(v.1.2.8)</em>, <em>farver(v.2.1.0)</em>,
+<em>bit64(v.4.0.5)</em>, <em>rprojroot(v.2.0.3)</em>,
+<em>parallelly(v.1.31.1)</em>, <em>vctrs(v.0.4.1)</em>,
+<em>generics(v.0.1.2)</em>, <em>xfun(v.0.31)</em>, <em>R6(v.2.5.1)</em>,
+<em>locfit(v.1.5-9.5)</em>, <em>bitops(v.1.0-7)</em>,
+<em>cachem(v.1.0.6)</em>, <em>DelayedArray(v.0.22.0)</em>,
+<em>assertthat(v.0.2.1)</em>, <em>vroom(v.1.5.7)</em>,
+<em>promises(v.1.2.0.1)</em>, <em>BiocIO(v.1.6.0)</em>,
+<em>gtable(v.0.3.0)</em>, <em>globals(v.0.15.0)</em>,
+<em>rlang(v.1.0.2)</em>, <em>MatrixModels(v.0.5-0)</em>,
+<em>systemfonts(v.1.0.4)</em>, <em>rtracklayer(v.1.56.0)</em>,
+<em>rstatix(v.0.7.0)</em>, <em>lazyeval(v.0.2.2)</em>,
+<em>broom(v.0.8.0)</em>, <em>BiocManager(v.1.30.18)</em>,
+<em>yaml(v.2.3.5)</em>, <em>abind(v.1.4-5)</em>,
+<em>modelr(v.0.1.8)</em>, <em>backports(v.1.4.1)</em>,
+<em>httpuv(v.1.6.5)</em>, <em>tools(v.4.2.1)</em>,
+<em>ellipsis(v.0.3.2)</em>, <em>jquerylib(v.0.1.4)</em>,
+<em>Rcpp(v.1.0.8.3)</em>, <em>progress(v.1.2.2)</em>,
+<em>zlibbioc(v.1.42.0)</em>, <em>RCurl(v.1.98-1.6)</em>,
+<em>prettyunits(v.1.1.1)</em>, <em>SummarizedExperiment(v.1.26.1)</em>,
+<em>haven(v.2.5.0)</em>, <em>fs(v.1.5.2)</em>,
+<em>data.table(v.1.14.2)</em>, <em>reprex(v.2.0.1)</em>,
+<em>ProtGenerics(v.1.28.0)</em>, <em>matrixStats(v.0.62.0)</em>,
+<em>hms(v.1.1.1)</em>, <em>mime(v.0.12)</em>, <em>evaluate(v.0.15)</em>,
+<em>xtable(v.1.8-4)</em>, <em>XML(v.3.99-0.9)</em>,
+<em>readxl(v.1.4.0)</em>, <em>gridExtra(v.2.3)</em>,
+<em>compiler(v.4.2.1)</em>, <em>biomaRt(v.2.52.0)</em>,
+<em>crayon(v.1.5.1)</em>, <em>mgcv(v.1.8-40)</em>,
+<em>later(v.1.3.0)</em>, <em>tzdb(v.0.3.0)</em>,
+<em>lubridate(v.1.8.0)</em>, <em>DBI(v.1.1.2)</em>,
+<em>MASS(v.7.3-58)</em>, <em>rappdirs(v.0.3.3)</em>,
+<em>Matrix(v.1.4-1)</em>, <em>car(v.3.0-13)</em>, <em>cli(v.3.3.0)</em>,
+<em>parallel(v.4.2.1)</em>, <em>pkgconfig(v.2.0.3)</em>,
+<em>GenomicAlignments(v.1.32.0)</em>, <em>xml2(v.1.3.3)</em>,
+<em>svglite(v.2.1.0)</em>, <em>bslib(v.0.3.1)</em>,
+<em>webshot(v.0.5.3)</em>, <em>XVector(v.0.36.0)</em>,
+<em>rvest(v.1.0.2)</em>, <em>digest(v.0.6.29)</em>,
+<em>Biostrings(v.2.64.0)</em>, <em>cellranger(v.1.1.0)</em>,
+<em>fastmatch(v.1.1-3)</em>, <em>restfulr(v.0.0.13)</em>,
+<em>curl(v.4.3.2)</em>, <em>shiny(v.1.7.1)</em>,
+<em>Rsamtools(v.2.12.0)</em>, <em>rjson(v.0.2.21)</em>,
+<em>nlme(v.3.1-159)</em>, <em>lifecycle(v.1.0.1)</em>,
+<em>jsonlite(v.1.8.0)</em>, <em>carData(v.3.0-5)</em>,
+<em>viridisLite(v.0.4.0)</em>, <em>fansi(v.1.0.3)</em>,
+<em>pillar(v.1.7.0)</em>, <em>lattice(v.0.20-45)</em>,
+<em>KEGGREST(v.1.36.0)</em>, <em>fastmap(v.1.1.0)</em>,
+<em>httr(v.1.4.3)</em>, <em>survival(v.3.4-0)</em>,
+<em>interactiveDisplayBase(v.1.34.0)</em>, <em>glue(v.1.6.2)</em>,
+<em>png(v.0.1-7)</em>, <em>BiocVersion(v.3.15.2)</em>,
+<em>bit(v.4.0.4)</em>, <em>stringi(v.1.7.6)</em>,
+<em>sass(v.0.4.1)</em>, <em>blob(v.1.2.3)</em> and
+<em>memoise(v.2.0.1)</em></p>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1954 @@
+---
+title: "Enrichment Analysis"
+subtitle: "210216_sorl1_snv dataset"
+author: "Lachlan Baer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    code_folding: hide
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE,
+  fig.align = "center"
+)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+# Setup
+
+```{r packages}
+suppressPackageStartupMessages({
+  ## Common
+  library(tidyverse)
+  library(magrittr)
+  library(future.apply)
+  library(here)
+  library(AnnotationHub)
+  library(purrr)
+  library(scales)
+  library(kableExtra)
+  library(tictoc)
+  library(ggrepel)
+  library(RColorBrewer)
+  library(ggpubr)
+  library(pander)
+  library(rmarkdown)
+  ## Project specific
+  library(edgeR)
+  library(limma)
+  library(pheatmap)
+  library(cqn)
+  library(DT)
+  library(htmltools)
+  library(msigdbr)
+  library(fgsea)
+})
+```
+
+```{r options}
+if (interactive()) setwd(here::here())
+theme_set(theme_bw())
+cores <- availableCores() - 1
+```
+
+```{r}
+source("~/bioinformatics/bioToolkit/lbFuncs.R")
+```
+
+## EnsDb
+
+```{r ensParams}
+ens_species <- "Danio rerio"
+ens_release <- "101"
+ens_assembly <- "GRCz11"
+```
+
+```{r ensDb}
+ah <- AnnotationHub() %>%
+  subset(species == ens_species) %>%
+  subset(rdataclass == "EnsDb")
+ahId <- ah$ah_id[str_detect(ah$title, ens_release)]
+ensDb <- ah[[ahId]]
+```
+
+```{r chrInfo}
+chrInfo <- getChromInfoFromEnsembl(ens_assembly, release = ens_release) %>%
+  dplyr::filter(coord_system == "chromosome")
+primary_chrs <- chrInfo$name
+```
+
+```{r transcripts}
+transcripts <- transcripts(ensDb, filter = SeqNameFilter(primary_chrs))
+txLen <- exonsBy(ensDb, "tx", filter = SeqNameFilter(primary_chrs)) %>%
+  width() %>%
+  vapply(sum, integer(1))
+mcols(transcripts) <- mcols(transcripts)[
+  c("tx_id", "gene_id", "gc_content")
+] %>%
+  as.data.frame() %>%
+  mutate(length = txLen)
+```
+
+```{r geneGc}
+geneGc <- transcripts %>%
+  mcols() %>%
+  as_tibble() %>%
+  group_by(gene_id) %>%
+  summarise(
+    gc_content = sum(gc_content*length) / sum(length),
+    length = ceiling(median(length))
+  )
+```
+
+```{r genes}
+genes <- genes(ensDb, filter = SeqNameFilter(primary_chrs)) %>%
+  .[,c("gene_id", "gene_name", "gene_biotype", "entrezid")] %>%
+  as_tibble() %>%
+  left_join(geneGc) %>%
+  GRanges()
+```
+
+An `EnsDb` object was obtained for Ensembl release 101 with the `AnnotationHub` package.
+This contained the information required to set up gene and transcript annotations.
+Gene-level estimates of GC content and length were also generated which may be required as covariates in suitable analyses.
+
+```{r entrezGenes}
+entrezGenes <- genes %>%
+  as.data.frame() %>%
+  dplyr::filter(!is.na(entrezid)) %>%
+  mutate(entrezid = unAsIs(entrezid)) %>%
+  unnest(entrezid) %>%
+  dplyr::rename(entrez_gene = entrezid)
+```
+
+```{r geneChrs}
+geneChrs <- as_tibble(genes) %>%
+  dplyr::select(gene_id, chromosome = seqnames)
+```
+
+## Metadata
+
+```{r metadata}
+metadata <- read_csv(here("files/SraRunTable.txt")) %>%
+  as.data.frame() %>%
+  dplyr::arrange(Run) %>%
+  mutate(
+    genotype = case_when(
+      Genotype == "wild-type" ~ "WT",
+      Genotype == "sorl1V1482Afs/+" ~ "V1482Afs_het",
+      Genotype == "sorl1R122Pfs/+" ~ "R122Pfs_het",
+      Genotype == "sorl1V1482Afs/R122Pfs" ~ "Trans",
+    ),
+    alias = c(
+      paste0(rep("WT", 8), seq(1, 8)),
+      paste0(rep("V1482Afs", 6), seq(1, 6)),
+      paste0(rep("R122Pfs", 4), seq(1, 4)),
+      paste0(rep("Trans", 6), seq(1, 6))
+    )
+  ) %>%
+  dplyr::select(
+    sample = Run, genotype, genotype2 = Genotype, alias, gender, tank = Tank
+  )
+metadata$genotype <- fct_relevel(
+  metadata$genotype,
+  c("WT", "V1482Afs_het", "R122Pfs_het", "Trans")
+)
+```
+
+```{r genoCols}
+genoCols <- metadata$genotype %>%
+  levels() %>%
+  length() %>%
+  brewer.pal("Set1") %>%
+  setNames(levels(metadata$genotype))
+```
+
+```{r samples_byGroup}
+samples_byGroup <- metadata %>%
+  split(f = .$genotype) %>%
+  sapply(function(x){
+    pull(x, sample)
+  }, simplify = FALSE)
+```
+
+## Differential expression data
+
+```{r dgeList}
+dgeList <- readRDS(here("files/dgeList.Rds"))
+```
+
+```{r design}
+design <- model.matrix(~0 + genotype, data = dgeList$samples) %>%
+  set_colnames(c("WT", "V1482Afs_het", "R122Pfs_het", "Trans"))
+```
+
+```{r contrasts}
+contrasts <- makeContrasts(
+  V1482Afs_het = V1482Afs_het - WT,
+  R122Pfs_het = R122Pfs_het - WT,
+  Trans = Trans - WT,
+  levels = colnames(design)
+)
+```
+
+```{r topTables}
+topTables <- readRDS(here("files/topTables.Rds"))
+```
+
+```{r deGenes}
+deGenes <- lapply(topTables, function(tt){
+  dplyr::filter(tt, DE) %>%
+    pull(gene_id)
+})
+```
+
+# Fisher's exact test for clustering
+
+## Chromosome clustering
+
+```{r}
+byChr_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+      table(
+        tt$DE,
+        tt$chromosome == chr
+      ) %>%
+        fisher.test()
+    }, simplify = FALSE) %>%
+      .[as.character(sort(as.numeric(names(.)), ))]
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+byChr_pvals <- sapply(byChr_fisher, function(geno){
+  lapply(geno, function(fisherRes){
+    fisherRes$p.value
+  }) %>%
+    unlist() %>%
+    enframe(name = "chr", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+## Regional clustering
+
+```{r}
+region_size <- 1e6
+```
+
+### Forward
+
+```{r}
+regionsFwd <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+  length <- chrInfo$length[chrInfo$name == chr]
+  starts <- seq(1, length, by = region_size)
+  # Remove last start as this is actually an end
+  starts <- starts[-length(starts)]
+  lapply(starts, function(start){
+    GRanges(
+      seqnames = chr,
+      ranges = IRanges(start = start, end = (start + region_size - 1))
+    )
+  }) %>%
+    set_names(paste0(
+      "chr",
+      chr,
+      ":",
+      starts, "-" , 
+      formatC(starts + region_size - 1, format = "d")
+    ))
+}, simplify = FALSE) %>%
+  .[as.character(sort(as.numeric(names(.)), ))] %>%
+  flatten()
+```
+
+```{r}
+regionsFwd_genes <- sapply(regionsFwd, function(region){
+  subsetByOverlaps(genes, region)$gene_id
+}, simplify = FALSE)
+```
+
+```{r}
+regionsFwd_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(regionsFwd_genes, function(regionGenes){
+      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
+      # Avoid error if no genes in region
+      if (sum(tt$inRegion) > 0) {
+        table(
+          tt$DE,
+          tt$inRegion
+        ) %>%
+          fisher.test()
+      }
+    }, simplify = FALSE)
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+regionsFwd_pvals <- sapply(regionsFwd_fisher, function(geno){
+  sapply(geno, function(fisherRes){
+    if (length(fisherRes)) {
+      fisherRes$p.value
+    } else {
+      return(1)
+    }
+  }, simplify = FALSE) %>%
+    unlist() %>%
+    enframe(name = "region", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+genes[genes$gene_name == "sorl1"]
+```
+
+### Reverse
+
+```{r}
+regionsRvs <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+  length <- chrInfo$length[chrInfo$name == chr]
+  starts <- seq(length, 1, by = -region_size)
+  # Reverse starts as GRanges won't handle regions with start > end
+  starts <- rev(starts)
+  # Remove last start as this is actually an end
+  starts <- starts[-length(starts)]
+  lapply(starts, function(start){
+    GRanges(
+      seqnames = chr,
+      ranges = IRanges(start = start, end = (start + region_size - 1))
+    )
+  }) %>%
+    set_names(paste0(
+      "chr",
+      chr,
+      ":",
+      starts, "-" , 
+      formatC(starts + region_size - 1, format = "d")
+    ))
+}, simplify = FALSE) %>%
+  .[as.character(sort(as.numeric(names(.)), ))] %>%
+  flatten()
+```
+
+```{r}
+regionsRvs_genes <- sapply(regionsRvs, function(region){
+  subsetByOverlaps(genes, region)$gene_id
+}, simplify = FALSE)
+```
+
+```{r}
+regionsRvs_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(regionsFwd_genes, function(regionGenes){
+      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
+      # Avoid error if no genes in region
+      if (sum(tt$inRegion) > 0) {
+        table(
+          tt$DE,
+          tt$inRegion
+        ) %>%
+          fisher.test()
+      }
+    }, simplify = FALSE)
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+regionsRvs_pvals <- sapply(regionsRvs_fisher, function(geno){
+  sapply(geno, function(fisherRes){
+    if (length(fisherRes)) {
+      fisherRes$p.value
+    } else {
+      return(1)
+    }
+  }, simplify = FALSE) %>%
+    unlist() %>%
+    enframe(name = "region", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+genes[genes$gene_name == "sorl1"]
+```
+
+# Gene sets
+
+Multiple gene set databases were accessed with the `msigdbr` package.
+For this analysis the Hallmark, KEGG, Wikipathways and chromosomal based gene sets were chosen.
+
+```{r hm}
+hm <- msigdbr(ens_species, category = "H") %>%
+  left_join(entrezGenes) %>%
+  dplyr::filter(!is.na(gene_id)) %>%
+  distinct(gs_name, gene_id, .keep_all = TRUE) %>%
+  mutate(gs_name = str_remove(gs_name, "^HALLMARK_"))
+hmByGene <- hm %>%
+  split(f = .$gene_id) %>%
+  lapply(extract2, "gs_name")
+hmByID <- hm %>%
+  split(f = .$gs_name) %>%
+  lapply(extract2, "gene_id")
+```
+
+- The Hallmark gene sets consists of `r length(hmByID)` gene sets ranging from sizes of `r min(sapply(hmByID, length))` to `r max(sapply(hmByID, length))` genes.
+
+```{r kg}
+kg <- msigdbr(ens_species, category = "C2", subcategory = "CP:KEGG") %>%
+  left_join(entrezGenes) %>%
+  dplyr::filter(!is.na(gene_id)) %>%
+  distinct(gs_name, gene_id, .keep_all = TRUE) %>%
+  mutate(gs_name = str_remove(gs_name, "^KEGG_"))
+kgByGene <- kg %>%
+  split(f = .$gene_id) %>%
+  lapply(extract2, "gs_name")
+kgByID <- kg %>%
+  split(f = .$gs_name) %>%
+  lapply(extract2, "gene_id")
+```
+
+- The KEGG gene sets consists of `r length(kgByID)` gene sets ranging from sizes of `r min(sapply(kgByID, length))` to `r max(sapply(kgByID, length))` genes.
+
+```{r wk}
+wk <- msigdbr(ens_species, category = "C2", subcategory = "CP:WIKIPATHWAYS") %>%
+  left_join(entrezGenes) %>%
+  dplyr::filter(!is.na(gene_id)) %>%
+  distinct(gs_name, gene_id, .keep_all = TRUE) %>%
+  mutate(gs_name = str_remove(gs_name, "^WP_"))
+wkByGene <- wk %>%
+  split(f = .$gene_id) %>%
+  lapply(extract2, "gs_name")
+wkByID <- wk %>%
+  split(f = .$gs_name) %>%
+  lapply(extract2, "gene_id")
+```
+
+- The Wikipathways gene sets consists of `r length(wkByID)` gene sets ranging from sizes of `r min(sapply(wkByID, length))` to `r max(sapply(wkByID, length))` genes.
+
+# Enrichment testing {.tabset}
+
+## Hallmark {.tabset .tabset-pills}
+
+```{r hm_fry}
+hm_fry <- contrasts %>%
+  apply(MARGIN = 2, function(contrast){
+    cpm(dgeList$counts, log = TRUE) %>%
+      fry(
+        index = hmByID,
+        design = design,
+        contrast = contrast,
+        sort = "mixed"
+      ) %>%
+      rownames_to_column("Pathway") %>%
+      as_tibble() %>%
+      mutate(
+        Pathway = str_trunc(Pathway, width = 18),
+        PValue = formatC(PValue, digits = 1, format = "e"),
+        FDR = formatC(FDR, digits = 1, format = "e"),
+        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
+        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
+      )
+  })
+```
+
+### V1482Afs_het
+
+```{r}
+datatable(hm_fry[[1]])
+```
+
+### R122Pfs_het
+
+```{r}
+datatable(hm_fry[[2]])
+```
+
+### Trans
+
+```{r}
+datatable(hm_fry[[3]])
+```
+
+## KEGG {.tabset .tabset-pills}
+
+```{r kg_fry}
+kg_fry <- contrasts %>%
+  apply(MARGIN = 2, function(contrast){
+    cpm(dgeList$counts, log = TRUE) %>%
+      fry(
+        index = kgByID,
+        design = design,
+        contrast = contrast,
+        sort = "mixed"
+      ) %>%
+      rownames_to_column("Pathway") %>%
+      as_tibble() %>%
+      mutate(
+        Pathway = str_trunc(Pathway, width = 18),
+        PValue = formatC(PValue, digits = 1, format = "e"),
+        FDR = formatC(FDR, digits = 1, format = "e"),
+        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
+        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
+      )
+  })
+```
+
+### V1482Afs_het
+
+```{r}
+datatable(kg_fry[[1]])
+```
+
+### R122Pfs_het
+
+```{r}
+datatable(kg_fry[[2]])
+```
+
+### Trans
+
+```{r}
+datatable(kg_fry[[3]])
+```
+
+## Wikipathways {.tabset .tabset-pills}
+
+```{r wk_fry}
+wk_fry <- contrasts %>%
+  apply(MARGIN = 2, function(contrast){
+    cpm(dgeList$counts, log = TRUE) %>%
+      fry(
+        index = wkByID,
+        design = design,
+        contrast = contrast,
+        sort = "mixed"
+      ) %>%
+      rownames_to_column("Pathway") %>%
+      as_tibble() %>%
+      mutate(
+        Pathway = str_trunc(Pathway, width = 18),
+        PValue = formatC(PValue, digits = 1, format = "e"),
+        FDR = formatC(FDR, digits = 1, format = "e"),
+        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
+        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
+      )
+  })
+```
+
+### V1482Afs_het
+
+```{r}
+datatable(wk_fry[[1]])
+```
+
+### R122Pfs_het
+
+```{r}
+datatable(wk_fry[[2]])
+```
+
+### Trans
+
+```{r}
+datatable(wk_fry[[3]])
+```
+
+# eQTL bias removal {.tabset}
+
+```{r dist_winRanges}
+dist_winRanges <- readRDS(here("files/dist_winRanges.Rds"))
+```
+
+```{r}
+genes_diversity <- readRDS(here("files/genes_diversity.Rds"))
+```
+
+```{r}
+thresholds <- seq(0.1, 1.0, 0.1)
+```
+
+```{r}
+threshOutcomes <- sapply(colnames(contrasts), function(cont){
+  topT_div <- as_tibble(genes_diversity[[cont]]) %>%
+    dplyr::select(gene_id, diversity) %>%
+    left_join(topTables[[cont]])
+  n_DE <- topT_div %>%
+    dplyr::filter(DE) %>%
+    nrow()
+  n_notDE <- topT_div %>%
+    dplyr::filter(!DE) %>%
+    nrow()
+  lapply(thresholds, function(threshVal){
+    topT_div %>%
+      dplyr::filter(diversity > threshVal) %>%
+      summarise(
+        DE_count = sum(DE),
+        DE_prop = DE_count / n_DE,
+        notDE_count = sum(!DE),
+        notDE_prop = notDE_count / n_notDE
+      ) %>%
+      mutate(threshold = threshVal)
+  }) %>%
+    bind_rows()
+}, simplify = FALSE)
+```
+
+```{r}
+threshPlots_de <- lapply(threshOutcomes, function(x){
+  x %>%
+    pivot_longer(
+      cols = c(DE_count, DE_prop, notDE_count, notDE_prop),
+      names_to = c("sig", "type"),
+      names_sep = "_"
+    ) %>%
+    pivot_wider(
+      names_from = "type",
+      values_from = "value"
+    ) %>%
+    ggplot(aes(x = threshold, y = prop, group = sig, fill = sig)) +
+    geom_bar(position = "dodge", stat = "identity", width = 0.08) +
+    geom_text(
+      aes(x = threshold, y = prop, label = count),
+      size = 3,
+      nudge_y = 0.03,
+      nudge_x = c(-0.019, 0.019)
+    ) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_y_continuous(breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+    scale_fill_manual(values = c("grey", "black"), labels = c("DE", "Not DE")) +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off", xlim = c(0.1,1)) +
+    labs(y = "Proportion of\ngenes removed", x = "Diversity threshold") +
+    theme(
+      legend.position = c(1.05, 0.5),
+      legend.title = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.border = element_blank(),
+    )
+})
+```
+
+## Fry
+
+### Hallmark {.tabset .tabset-pills}
+
+```{r hm_fry_eqtl}
+hm_fry_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      cpm(
+        dgeList$counts[genes_passed,],
+        log = TRUE
+      ) %>%
+        fry(
+          index = hmByID,
+          design = design,
+          contrast = contrasts[,cont],
+          sort = "mixed"
+        ) %>%
+        dplyr::filter(NGenes > 0) %>%
+        rownames_to_column("Pathway") %>%
+        as_tibble() %>%
+        mutate(
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          sig = FDR.Mixed < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+hm_cols <- setNames(hue_pal()(length(names(hmByID))), names(hmByID))
+```
+
+```{r}
+hm_fry_eqtl_top <- sapply(hm_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(hm_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% hm_fry_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR (mixed): %e<br>",
+          "Number of genes: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR.Mixed, NGenes, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(hm_fry_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = hm_cols, na.value="white") +
+    scale_colour_manual(values = hm_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+hm_fry_eqtl_sig <- sapply(hm_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
+  lapply(hm_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% hm_fry_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(PValue.Mixed),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = NGenes), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = hm_cols) +
+    scale_fill_manual(values = hm_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_hm_fry[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_fry_eqtl_sig[[1]])) {
+  pPlots_hm_fry[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_hm_fry[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_fry_eqtl_sig[[2]])) {
+  pPlots_hm_fry[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_hm_fry[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_fry_eqtl_sig[[3]])) {
+  pPlots_hm_fry[[3]]
+}
+```
+
+### KEGG {.tabset .tabset-pills}
+
+```{r kg_fry_eqtl}
+kg_fry_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      cpm(
+        dgeList$counts[genes_passed,],
+        log = TRUE
+      ) %>%
+        fry(
+          index = kgByID,
+          design = design,
+          contrast = contrasts[,cont],
+          sort = "mixed"
+        ) %>%
+        dplyr::filter(NGenes > 0) %>%
+        rownames_to_column("Pathway") %>%
+        as_tibble() %>%
+        mutate(
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          sig = FDR.Mixed < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+kg_cols <- setNames(hue_pal()(length(names(kgByID))), names(kgByID))
+```
+
+```{r}
+kg_fry_eqtl_top <- sapply(kg_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(kg_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% kg_fry_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR (mixed): %e<br>",
+          "Number of genes: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR.Mixed, NGenes, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(kg_fry_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = kg_cols, na.value="white") +
+    scale_colour_manual(values = kg_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+kg_fry_eqtl_sig <- sapply(kg_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
+  lapply(kg_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% kg_fry_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(PValue.Mixed),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = NGenes), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = kg_cols) +
+    scale_fill_manual(values = kg_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_kg_fry[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_fry_eqtl_sig[[1]])) {
+  pPlots_kg_fry[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_kg_fry[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_fry_eqtl_sig[[2]])) {
+  pPlots_kg_fry[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_kg_fry[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_fry_eqtl_sig[[3]])) {
+  pPlots_kg_fry[[3]]
+}
+```
+
+### Wikipathways {.tabset .tabset-pills}
+
+```{r wk_fry_eqtl}
+wk_fry_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      cpm(
+        dgeList$counts[genes_passed,],
+        log = TRUE
+      ) %>%
+        fry(
+          index = wkByID,
+          design = design,
+          contrast = contrasts[,cont],
+          sort = "mixed"
+        ) %>%
+        dplyr::filter(NGenes > 0) %>%
+        rownames_to_column("Pathway") %>%
+        as_tibble() %>%
+        mutate(
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          sig = FDR.Mixed < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+wk_cols <- setNames(hue_pal()(length(names(wkByID))), names(wkByID))
+```
+
+```{r}
+wk_fry_eqtl_top <- sapply(wk_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(wk_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% wk_fry_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR (mixed): %e<br>",
+          "Number of genes: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR.Mixed, NGenes, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(wk_fry_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = wk_cols, na.value="white") +
+    scale_colour_manual(values = wk_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+wk_fry_eqtl_sig <- sapply(wk_fry_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
+  lapply(wk_fry_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% wk_fry_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(PValue.Mixed),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = NGenes), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = wk_cols) +
+    scale_fill_manual(values = wk_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_wk_fry[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_fry_eqtl_sig[[1]])) {
+  pPlots_wk_fry[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_wk_fry[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_fry_eqtl_sig[[2]])) {
+  pPlots_wk_fry[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_wk_fry[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_fry_eqtl_sig[[3]])) {
+  pPlots_wk_fry[[3]]
+}
+```
+
+## GSEA
+
+```{r}
+ranks_d <- lapply(topTables, function(x){
+  x %>%
+    mutate(stat = -log10(PValue) * sign(logFC)) %>%
+    dplyr::arrange(desc(stat)) %>%
+    with(structure(stat, names = gene_id))
+})
+```
+
+```{r}
+ranks_nd <- lapply(topTables, function(x){
+  x %>%
+    mutate(stat = -log10(PValue)) %>%
+    dplyr::arrange(desc(stat)) %>%
+    with(structure(stat, names = gene_id))
+})
+```
+
+### Hallmark {.tabset .tabset-pills}
+
+```{r hm_gsea_eqtl}
+set.seed(220615)
+hm_gsea_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      fgseaMultilevel(hmByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+        as_tibble() %>%
+        dplyr::rename(FDR = padj, Pathway = pathway) %>%
+        dplyr::arrange(pval) %>%
+        mutate(
+          edgeSize = vapply(leadingEdge, length, numeric(1)),
+          Direction = case_when(
+            sign(ES) == 1 ~ "Up",
+            sign(ES) == -1 ~ "Down",
+            sign(ES) == 0 ~ "None"
+          ),
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          bonf.p.adj = p.adjust(pval, "bonferroni"),
+          sig = bonf.p.adj < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+hm_cols <- setNames(hue_pal()(length(names(hmByID))), names(hmByID))
+```
+
+```{r}
+hm_gsea_eqtl_top <- sapply(hm_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(hm_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% hm_gsea_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR: %e<br>",
+          "Leading edge size: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR, edgeSize, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(hm_gsea_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = hm_cols, na.value="white") +
+    scale_colour_manual(values = hm_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+hm_gsea_eqtl_sig <- sapply(hm_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
+  lapply(hm_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% hm_gsea_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(pval),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = edgeSize), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = hm_cols) +
+    scale_fill_manual(values = hm_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_hm_gsea[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_gsea_eqtl_sig[[1]])) {
+  pPlots_hm_gsea[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_hm_gsea[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_gsea_eqtl_sig[[2]])) {
+  pPlots_hm_gsea[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_hm_gsea[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(hm_gsea_eqtl_sig[[3]])) {
+  pPlots_hm_gsea[[3]]
+}
+```
+
+### KEGG {.tabset .tabset-pills}
+
+```{r kg_gsea_eqtl}
+set.seed(220615)
+kg_gsea_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      fgseaMultilevel(kgByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+        as_tibble() %>%
+        dplyr::rename(FDR = padj, Pathway = pathway) %>%
+        dplyr::arrange(pval) %>%
+        mutate(
+          edgeSize = vapply(leadingEdge, length, numeric(1)),
+          Direction = case_when(
+            sign(ES) == 1 ~ "Up",
+            sign(ES) == -1 ~ "Down",
+            sign(ES) == 0 ~ "None"
+          ),
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          bonf.p.adj = p.adjust(pval, "bonferroni"),
+          sig = bonf.p.adj < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+kg_cols <- setNames(hue_pal()(length(names(kgByID))), names(kgByID))
+```
+
+```{r}
+kg_gsea_eqtl_top <- sapply(kg_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(kg_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% kg_gsea_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR: %e<br>",
+          "Leading edge size: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR, edgeSize, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(kg_gsea_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = kg_cols, na.value="white") +
+    scale_colour_manual(values = kg_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+kg_gsea_eqtl_sig <- sapply(kg_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
+  lapply(kg_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% kg_gsea_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(pval),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = edgeSize), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = kg_cols) +
+    scale_fill_manual(values = kg_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_kg_gsea[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_gsea_eqtl_sig[[1]])) {
+  pPlots_kg_gsea[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_kg_gsea[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_gsea_eqtl_sig[[2]])) {
+  pPlots_kg_gsea[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_kg_gsea[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(kg_gsea_eqtl_sig[[3]])) {
+  pPlots_kg_gsea[[3]]
+}
+```
+
+### Wikipathways {.tabset .tabset-pills}
+
+```{r wk_gsea_eqtl}
+set.seed(220615)
+wk_gsea_eqtl <- colnames(contrasts) %>%
+  sapply(function(cont){
+    lapply(thresholds, function(threshVal){
+      genes_passed <- genes_diversity[[cont]] %>%
+        as_tibble() %>%
+        dplyr::filter(diversity <= threshVal) %>%
+        pull(gene_id)
+      fgseaMultilevel(wkByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+        as_tibble() %>%
+        dplyr::rename(FDR = padj, Pathway = pathway) %>%
+        dplyr::arrange(pval) %>%
+        mutate(
+          edgeSize = vapply(leadingEdge, length, numeric(1)),
+          Direction = case_when(
+            sign(ES) == 1 ~ "Up",
+            sign(ES) == -1 ~ "Down",
+            sign(ES) == 0 ~ "None"
+          ),
+          diversity_threshold = threshVal,
+          rank = row_number(),
+          bonf.p.adj = p.adjust(pval, "bonferroni"),
+          sig = bonf.p.adj < 0.05
+        )
+    })
+  }, simplify = FALSE)
+```
+
+```{r}
+wk_cols <- setNames(hue_pal()(length(names(wkByID))), names(wkByID))
+```
+
+```{r}
+wk_gsea_eqtl_top <- sapply(wk_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold[1:20,] %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+rankPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
+  # plotly::ggplotly({
+  lapply(wk_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% wk_gsea_eqtl_top[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      rel_rank,
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA)),
+      text = sprintf(
+        paste0(
+          "Pathway: %s<br>",
+          "Rank: %i<br>",
+          "Relative rank: %i<br>",
+          "FDR: %e<br>",
+          "Leading edge size: %i<br>",
+          "Direction: %s"
+        ),
+        Pathway, rank, rel_rank, FDR, edgeSize, Direction
+      )
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = rank), colour = "black", size = 2.1) +
+    geom_text(aes(x = 1.01, label = label), size = 3.2, hjust = 0, na.rm = TRUE) +
+    scale_y_reverse(breaks = seq(1, length(wk_gsea_eqtl_top[[cont]]), 1)) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_fill_manual(values = wk_cols, na.value="white") +
+    scale_colour_manual(values = wk_cols) +
+    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
+    coord_cartesian(clip = "off") +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.border = element_blank(),
+      axis.title.x = element_blank(),
+    )
+  # }, tooltip = "text")
+}, simplify = FALSE)
+```
+
+```{r}
+wk_gsea_eqtl_sig <- sapply(wk_gsea_eqtl, function(contrast){
+  lapply(contrast, function(threshold){
+    threshold %>%
+      dplyr::filter(sig) %>%
+      pull(Pathway)
+  }) %>%
+    unlist() %>%
+    unique()
+}, simplify = FALSE)
+```
+
+```{r}
+pPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
+  lapply(wk_gsea_eqtl[[cont]], function(threshold){
+    threshold %>%
+      dplyr::filter(Pathway %in% wk_gsea_eqtl_sig[[cont]]) %>%
+      mutate(rel_rank = row_number())
+  }) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(
+        diversity_threshold == 1,
+        str_trunc(Pathway, width = 30),
+        NA
+      )
+    ) %>%
+    ggplot(aes(
+      diversity_threshold,
+      -log10(pval),
+      group = Pathway,
+      colour = Pathway,
+      fill = factor(ifelse(sig, Pathway, NA))
+    )) +
+    geom_line() +
+    geom_point(shape = 21, size = 4) +
+    geom_text(aes(label = edgeSize), colour = "black", size = 2.1) +
+    scale_x_continuous(breaks = thresholds) +
+    scale_colour_manual(values = wk_cols) +
+    scale_fill_manual(values = wk_cols, na.value="white") +
+    labs(x = "Diversity threshold", y = log10plab) +
+    facet_wrap(~Pathway, ncol = 2) +
+    theme(
+      legend.position = "none",
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}, simplify = FALSE)
+```
+
+#### V1482Afs_het
+
+```{r}
+ggarrange(
+  rankPlots_wk_gsea[[1]],
+  NULL,
+  threshPlots_de[[1]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_gsea_eqtl_sig[[1]])) {
+  pPlots_wk_gsea[[1]]
+}
+```
+
+#### R122Pfs_het
+
+```{r}
+ggarrange(
+  rankPlots_wk_gsea[[2]],
+  NULL,
+  threshPlots_de[[2]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_gsea_eqtl_sig[[2]])) {
+  pPlots_wk_gsea[[2]]
+}
+```
+
+#### Trans
+
+```{r}
+ggarrange(
+  rankPlots_wk_gsea[[3]],
+  NULL,
+  threshPlots_de[[3]],
+  ncol = 1,
+  heights = c(4,0.2,1)
+)
+```
+
+```{r}
+if (length(wk_gsea_eqtl_sig[[3]])) {
+  pPlots_wk_gsea[[3]]
+}
+```
+
+# Tmp
+
+```{r}
+ttdiv <- map2(topTables, genes_diversity, function(tt, div){
+  left_join(tt, as_tibble(div))
+})
+lapply(seq_along(ttdiv), function(x){
+  mutate(ttdiv[[x]], contrast = names(ttdiv)[x]) %>%
+    dplyr::filter(!is.na(diversity))
+}) %>%
+  bind_rows() %>%
+  ggplot(aes(x = diversity, y = -log10(PValue))) +
+  geom_point() +
+  labs(x = "Diversity score", y = log10plab) +
+  facet_wrap(~contrast, ncol = 1)
+```
