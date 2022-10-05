@@ -147,6 +147,10 @@ samples_byGroup <- metadata %>%
 
 # DE data
 
+```{r}
+dgeList <- readRDS(here("files/dgeList.Rds"))
+```
+
 ```{r deData}
 topDE <- readRDS(here("files/topTables.Rds")) %>%
   sapply(function(x){
@@ -449,15 +453,14 @@ if (!file.exists(dist_winRanges_path)) {
 }
 ```
 
-```{r dgeList}
-dgeList <- readRDS(here("files/dgeList.Rds"))
-```
+### masterGR
 
-```{r genes_diversity}
+```{r masterGR}
 ## Takes ~5 mins to run so .Rds saved for convenience
-genes_diversity_path <- here("files/genes_diversity.Rds")
-if (!file.exists(genes_diversity_path)) {
-  genes_diversity <- lapply(dist_winRanges, function(winRanges){
+## Note a few genes are lost that do not fall within a diversity range
+masterGR_path <- here("files/masterGR.Rds")
+if (!file.exists(masterGR_path)) {
+  masterGR <- map2(dist_winRanges, topDE, function(winRanges, tt){
     overlaps <- findOverlaps(GRanges(dgeList$genes), winRanges)
     lapply(unique(queryHits(overlaps)), function(query){
       subjects <- subjectHits(overlaps)[queryHits(overlaps) == query]
@@ -467,11 +470,12 @@ if (!file.exists(genes_diversity_path)) {
         mutate(diversity = diversity)
     }) %>%
       bind_rows() %>%
+      left_join(tt[,c("gene_id", "logFC", "PValue", "FDR", "DE")]) %>%
       GRanges()
   })
-  saveRDS(genes_diversity, genes_diversity_path)
+  saveRDS(masterGR, masterGR_path)
 } else {
-  genes_diversity <- readRDS(genes_diversity_path)
+  masterGR <- readRDS(masterGR_path)
 }
 ```
 
@@ -485,7 +489,7 @@ plot_allele_dist <- function(
     title
 ){
   tracks <- list()
-  
+
   if (length(mutation)) {
     mutation <- mutation %>%
       plyranges::filter(seqnames == chr) %>%
@@ -502,7 +506,7 @@ plot_allele_dist <- function(
     )
     tracks <- append(tracks, mutant_track)
   }
-  
+
   axis_track <- GenomeAxisTrack(
     add53 = TRUE,
     add35 = TRUE,
@@ -516,7 +520,7 @@ plot_allele_dist <- function(
     )
   }
   tracks <- append(tracks, axis_track)
-  
+
   if (length(genes)) {
     genes <- genes %>%
       plyranges::filter(seqnames == chr) %>%
@@ -532,7 +536,7 @@ plot_allele_dist <- function(
     )
     tracks <- append(tracks, gene_track)
   }
-  
+
   dist_track <- dist[,"diversity"] %>%
     plyranges::filter(seqnames == chr) %>%
     DataTrack(
@@ -562,7 +566,7 @@ plot_allele_dist <- function(
     )
   }
   tracks <- append(tracks, dist_track)
-  
+
   if (length(lfc)) {
     lfc_track <- lfc[,"lfc_rollmean"] %>%
       plyranges::filter(seqnames == chr) %>%
@@ -579,7 +583,7 @@ plot_allele_dist <- function(
       )
     tracks <- append(tracks, lfc_track)
   }
-  
+
   plotTracks(
     trackList = tracks,
     main = title,
@@ -591,12 +595,12 @@ plot_allele_dist <- function(
 ```
 
 ```{r distPlot1}
-chr <- "15"
+chr <- "5"
 ind <- 1
 plot_allele_dist(
   chr = chr,
   genes = genes[deGenes[[ind]]$gene_id],
-  mutation = genes[genes$gene_name == "psen1"],
+  mutation = genes[genes$gene_name == "sorl1"],
   dist = allele_dist[[ind]], dist_type = "l", dist_trans = 1,
   lfc = lfc[[ind]], lfc_type = "heatmap", lfc_trans = 1/3,
   title = paste0(
@@ -613,7 +617,7 @@ ind <- 2
 plot_allele_dist(
   chr = chr,
   genes = genes[deGenes[[ind]]$gene_id],
-  mutation = genes[genes$gene_name == "naglu"],
+  mutation = genes[genes$gene_name == "sorl1"],
   dist = allele_dist[[ind]], dist_type = "l", dist_trans = 1,
   lfc = lfc[[ind]], lfc_type = "heatmap", lfc_trans = 1/3,
   title = paste0(
@@ -630,7 +634,7 @@ ind <- 3
 plot_allele_dist(
   chr = chr,
   genes = genes[deGenes[[ind]]$gene_id],
-  mutation = genes[genes$gene_name == "naglu"],
+  mutation = genes[genes$gene_name == "sorl1"],
   dist = allele_dist[[ind]], dist_type = "l", dist_trans = 1,
   lfc = lfc[[ind]], lfc_type = "heatmap", lfc_trans = 1/3,
   title = paste0(

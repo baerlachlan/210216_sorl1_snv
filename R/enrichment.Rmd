@@ -215,201 +215,10 @@ deGenes <- lapply(topTables, function(tt){
 })
 ```
 
-# Fisher's exact test for clustering
-
-## Chromosome clustering
+## masterGR
 
 ```{r}
-byChr_fisher <- sapply(topTables, function(tt){
-  # Check for DE genes
-  if (sum(tt$DE)) {
-    sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
-      table(
-        tt$DE,
-        tt$chromosome == chr
-      ) %>%
-        fisher.test()
-    }, simplify = FALSE) %>%
-      .[as.character(sort(as.numeric(names(.)), ))]
-  }
-}, simplify = FALSE)
-```
-
-```{r}
-byChr_pvals <- sapply(byChr_fisher, function(geno){
-  lapply(geno, function(fisherRes){
-    fisherRes$p.value
-  }) %>%
-    unlist() %>%
-    enframe(name = "chr", value = "p") %>%
-    mutate(
-      bonf = p.adjust(p, method = "bonf"),
-      sig = bonf < 0.05,
-      p = formatC(p, format = "e", digits = 2),
-      bonf = formatC(bonf, format = "e", digits = 2),
-    ) %>%
-    dplyr::filter(sig)
-}, simplify = FALSE)
-```
-
-## Regional clustering
-
-```{r}
-region_size <- 1e6
-```
-
-### Forward
-
-```{r}
-regionsFwd <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
-  length <- chrInfo$length[chrInfo$name == chr]
-  starts <- seq(1, length, by = region_size)
-  # Remove last start as this is actually an end
-  starts <- starts[-length(starts)]
-  lapply(starts, function(start){
-    GRanges(
-      seqnames = chr,
-      ranges = IRanges(start = start, end = (start + region_size - 1))
-    )
-  }) %>%
-    set_names(paste0(
-      "chr",
-      chr,
-      ":",
-      starts, "-" , 
-      formatC(starts + region_size - 1, format = "d")
-    ))
-}, simplify = FALSE) %>%
-  .[as.character(sort(as.numeric(names(.)), ))] %>%
-  flatten()
-```
-
-```{r}
-regionsFwd_genes <- sapply(regionsFwd, function(region){
-  subsetByOverlaps(genes, region)$gene_id
-}, simplify = FALSE)
-```
-
-```{r}
-regionsFwd_fisher <- sapply(topTables, function(tt){
-  # Check for DE genes
-  if (sum(tt$DE)) {
-    sapply(regionsFwd_genes, function(regionGenes){
-      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
-      # Avoid error if no genes in region
-      if (sum(tt$inRegion) > 0) {
-        table(
-          tt$DE,
-          tt$inRegion
-        ) %>%
-          fisher.test()
-      }
-    }, simplify = FALSE)
-  }
-}, simplify = FALSE)
-```
-
-```{r}
-regionsFwd_pvals <- sapply(regionsFwd_fisher, function(geno){
-  sapply(geno, function(fisherRes){
-    if (length(fisherRes)) {
-      fisherRes$p.value
-    } else {
-      return(1)
-    }
-  }, simplify = FALSE) %>%
-    unlist() %>%
-    enframe(name = "region", value = "p") %>%
-    mutate(
-      bonf = p.adjust(p, method = "bonf"),
-      sig = bonf < 0.05,
-      p = formatC(p, format = "e", digits = 2),
-      bonf = formatC(bonf, format = "e", digits = 2),
-    ) %>%
-    dplyr::filter(sig)
-}, simplify = FALSE)
-```
-
-```{r}
-genes[genes$gene_name == "sorl1"]
-```
-
-### Reverse
-
-```{r}
-regionsRvs <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
-  length <- chrInfo$length[chrInfo$name == chr]
-  starts <- seq(length, 1, by = -region_size)
-  # Reverse starts as GRanges won't handle regions with start > end
-  starts <- rev(starts)
-  # Remove last start as this is actually an end
-  starts <- starts[-length(starts)]
-  lapply(starts, function(start){
-    GRanges(
-      seqnames = chr,
-      ranges = IRanges(start = start, end = (start + region_size - 1))
-    )
-  }) %>%
-    set_names(paste0(
-      "chr",
-      chr,
-      ":",
-      starts, "-" , 
-      formatC(starts + region_size - 1, format = "d")
-    ))
-}, simplify = FALSE) %>%
-  .[as.character(sort(as.numeric(names(.)), ))] %>%
-  flatten()
-```
-
-```{r}
-regionsRvs_genes <- sapply(regionsRvs, function(region){
-  subsetByOverlaps(genes, region)$gene_id
-}, simplify = FALSE)
-```
-
-```{r}
-regionsRvs_fisher <- sapply(topTables, function(tt){
-  # Check for DE genes
-  if (sum(tt$DE)) {
-    sapply(regionsFwd_genes, function(regionGenes){
-      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
-      # Avoid error if no genes in region
-      if (sum(tt$inRegion) > 0) {
-        table(
-          tt$DE,
-          tt$inRegion
-        ) %>%
-          fisher.test()
-      }
-    }, simplify = FALSE)
-  }
-}, simplify = FALSE)
-```
-
-```{r}
-regionsRvs_pvals <- sapply(regionsRvs_fisher, function(geno){
-  sapply(geno, function(fisherRes){
-    if (length(fisherRes)) {
-      fisherRes$p.value
-    } else {
-      return(1)
-    }
-  }, simplify = FALSE) %>%
-    unlist() %>%
-    enframe(name = "region", value = "p") %>%
-    mutate(
-      bonf = p.adjust(p, method = "bonf"),
-      sig = bonf < 0.05,
-      p = formatC(p, format = "e", digits = 2),
-      bonf = formatC(bonf, format = "e", digits = 2),
-    ) %>%
-    dplyr::filter(sig)
-}, simplify = FALSE)
-```
-
-```{r}
-genes[genes$gene_name == "sorl1"]
+masterGR <- readRDS(here("files/masterGR.Rds"))
 ```
 
 # Gene sets
@@ -464,6 +273,312 @@ wkByID <- wk %>%
 ```
 
 - The Wikipathways gene sets consists of `r length(wkByID)` gene sets ranging from sizes of `r min(sapply(wkByID, length))` to `r max(sapply(wkByID, length))` genes.
+
+# Fisher's exact test for clustering
+
+## Chromosome clustering
+
+```{r}
+byChr_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+      table(
+        tt$DE,
+        tt$chromosome == chr
+      ) %>%
+        fisher.test()
+    }, simplify = FALSE) %>%
+      .[as.character(sort(as.numeric(names(.)), ))]
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+byChr_pvals <- sapply(byChr_fisher, function(geno){
+  lapply(geno, function(fisherRes){
+    fisherRes$p.value
+  }) %>%
+    unlist() %>%
+    enframe(name = "chr", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = signif(p, digits = 3),
+      bonf = signif(bonf, digits = 3),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+tagList({
+  lapply(seq_along(byChr_pvals), function(i, tbl, name){
+    lbSimpleDT(
+      tbl = tbl[[i]],
+      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
+    )
+  }, tbl = byChr_pvals, name = names(byChr_pvals))
+})
+```
+
+### With DAR threshold
+
+Check if removing genes below a diversity threshold still shows an enrichment.
+
+```{r}
+threshold <- 0.3
+```
+
+```{r}
+byChrThresh_fisher <- sapply(masterGR, function(gr){
+  tbl <- as_tibble(gr) %>%
+    dplyr::filter(diversity <= threshold) %>%
+    mutate(chromosome = as.vector(seqnames))
+  # Check for DE genes
+  if (sum(tbl$DE)) {
+    sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+      table(
+        tbl$DE,
+        tbl$chromosome == chr
+      ) %>%
+        fisher.test()
+    }, simplify = FALSE) %>%
+      .[as.character(sort(as.numeric(names(.)), ))]
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+byChrThresh_pvals <- sapply(byChrThresh_fisher, function(geno){
+  lapply(geno, function(fisherRes){
+    fisherRes$p.value
+  }) %>%
+    unlist() %>%
+    enframe(name = "chr", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+tagList({
+  lapply(seq_along(byChrThresh_pvals), function(i, tbl, name){
+    lbSimpleDT(
+      tbl = tbl[[i]],
+      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
+    )
+  }, tbl = byChrThresh_pvals, name = names(byChrThresh_pvals))
+})
+```
+
+Since we still have a significant enrichment for DE genes on the mutant chromosome, let's check the gene sets they belong to and see if they make sense.
+
+```{r}
+genesPassed <- as_tibble(masterGR[[1]]) %>%
+  mutate(seqnames = as.factor(seqnames)) %>%
+  dplyr::filter(
+    seqnames == "24",
+    DE,
+    diversity <= threshold
+  ) %>%
+  .$gene_id
+```
+
+```{r}
+hmByGene[names(hmByGene) %in% genesPassed]
+kgByGene[names(kgByGene) %in% genesPassed]
+wkByGene[names(wkByGene) %in% genesPassed]
+```
+
+Only one gene is present in any of the gene sets, and it does not appear to have an expected relevance to MPS.
+
+## Regional clustering
+
+```{r}
+region_size <- 1e6
+```
+
+### Forward
+
+```{r}
+regionsFwd <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+  length <- chrInfo$length[chrInfo$name == chr]
+  starts <- seq(1, length, by = region_size)
+  # Remove last start as this is actually an end
+  starts <- starts[-length(starts)]
+  lapply(starts, function(start){
+    GRanges(
+      seqnames = chr,
+      ranges = IRanges(start = start, end = (start + region_size - 1))
+    )
+  }) %>%
+    set_names(paste0(
+      "chr",
+      chr,
+      ":",
+      starts, "-" ,
+      formatC(starts + region_size - 1, format = "d")
+    ))
+}, simplify = FALSE) %>%
+  .[as.character(sort(as.numeric(names(.)), ))] %>%
+  flatten()
+```
+
+```{r}
+regionsFwd_genes <- sapply(regionsFwd, function(region){
+  subsetByOverlaps(genes, region)$gene_id
+}, simplify = FALSE)
+```
+
+```{r}
+regionsFwd_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(regionsFwd_genes, function(regionGenes){
+      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
+      # Avoid error if no genes in region
+      if (sum(tt$inRegion) > 0) {
+        table(
+          tt$DE,
+          tt$inRegion
+        ) %>%
+          fisher.test()
+      }
+    }, simplify = FALSE)
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+regionsFwd_pvals <- sapply(regionsFwd_fisher, function(geno){
+  sapply(geno, function(fisherRes){
+    if (length(fisherRes)) {
+      fisherRes$p.value
+    } else {
+      return(1)
+    }
+  }, simplify = FALSE) %>%
+    unlist() %>%
+    enframe(name = "region", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+tagList({
+  lapply(seq_along(regionsFwd_pvals), function(i, tbl, name){
+    lbSimpleDT(
+      tbl = tbl[[i]],
+      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
+    )
+  }, tbl = regionsFwd_pvals, name = names(regionsFwd_pvals))
+})
+```
+
+```{r}
+genes[genes$gene_name == "sorl1"]
+```
+
+### Reverse
+
+```{r}
+regionsRvs <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
+  length <- chrInfo$length[chrInfo$name == chr]
+  starts <- seq(length, 1, by = -region_size)
+  # Reverse starts as GRanges won't handle regions with start > end
+  starts <- rev(starts)
+  # Remove last start as this is actually an end
+  starts <- starts[-length(starts)]
+  lapply(starts, function(start){
+    GRanges(
+      seqnames = chr,
+      ranges = IRanges(start = start, end = (start + region_size - 1))
+    )
+  }) %>%
+    set_names(paste0(
+      "chr",
+      chr,
+      ":",
+      starts, "-" ,
+      formatC(starts + region_size - 1, format = "d")
+    ))
+}, simplify = FALSE) %>%
+  .[as.character(sort(as.numeric(names(.)), ))] %>%
+  flatten()
+```
+
+```{r}
+regionsRvs_genes <- sapply(regionsRvs, function(region){
+  subsetByOverlaps(genes, region)$gene_id
+}, simplify = FALSE)
+```
+
+```{r}
+regionsRvs_fisher <- sapply(topTables, function(tt){
+  # Check for DE genes
+  if (sum(tt$DE)) {
+    sapply(regionsFwd_genes, function(regionGenes){
+      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
+      # Avoid error if no genes in region
+      if (sum(tt$inRegion) > 0) {
+        table(
+          tt$DE,
+          tt$inRegion
+        ) %>%
+          fisher.test()
+      }
+    }, simplify = FALSE)
+  }
+}, simplify = FALSE)
+```
+
+```{r}
+regionsRvs_pvals <- sapply(regionsRvs_fisher, function(geno){
+  sapply(geno, function(fisherRes){
+    if (length(fisherRes)) {
+      fisherRes$p.value
+    } else {
+      return(1)
+    }
+  }, simplify = FALSE) %>%
+    unlist() %>%
+    enframe(name = "region", value = "p") %>%
+    mutate(
+      bonf = p.adjust(p, method = "bonf"),
+      sig = bonf < 0.05,
+      p = formatC(p, format = "e", digits = 2),
+      bonf = formatC(bonf, format = "e", digits = 2),
+    ) %>%
+    dplyr::filter(sig)
+}, simplify = FALSE)
+```
+
+```{r}
+tagList({
+  lapply(seq_along(regionsRvs_pvals), function(i, tbl, name){
+    lbSimpleDT(
+      tbl = tbl[[i]],
+      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
+    )
+  }, tbl = regionsRvs_pvals, name = names(regionsRvs_pvals))
+})
+```
+
+```{r}
+genes[genes$gene_name == "sorl1"]
+```
 
 # Enrichment testing {.tabset}
 
