@@ -349,7 +349,7 @@ if (!file.exists(allele_dist_path)) {
     }
   ) %>%
     set_names(c("V1482Afs_het", "R122Pfs_het", "Trans"))
-  saveRDS(allele_dist, allele_dist_path) 
+  saveRDS(allele_dist, allele_dist_path)
 } else {
   allele_dist <- readRDS(allele_dist_path)
 }

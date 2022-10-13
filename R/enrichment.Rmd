@@ -274,9 +274,11 @@ wkByID <- wk %>%
 
 - The Wikipathways gene sets consists of `r length(wkByID)` gene sets ranging from sizes of `r min(sapply(wkByID, length))` to `r max(sapply(wkByID, length))` genes.
 
-# Fisher's exact test for clustering
+# Fisher's exact test for clustering {.tabset}
 
-## Chromosome clustering
+## Chromosome clustering {.tabset .tabset-pills}
+
+### Without DAR threshold
 
 ```{r}
 byChr_fisher <- sapply(topTables, function(tt){
@@ -398,7 +400,7 @@ wkByGene[names(wkByGene) %in% genesPassed]
 
 Only one gene is present in any of the gene sets, and it does not appear to have an expected relevance to MPS.
 
-## Regional clustering
+## Regional clustering {.tabset .tabset-pills}
 
 ```{r}
 region_size <- 1e6
@@ -582,149 +584,13 @@ genes[genes$gene_name == "sorl1"]
 
 # Enrichment testing {.tabset}
 
-## Hallmark {.tabset .tabset-pills}
-
-```{r hm_fry}
-hm_fry <- contrasts %>%
-  apply(MARGIN = 2, function(contrast){
-    cpm(dgeList$counts, log = TRUE) %>%
-      fry(
-        index = hmByID,
-        design = design,
-        contrast = contrast,
-        sort = "mixed"
-      ) %>%
-      rownames_to_column("Pathway") %>%
-      as_tibble() %>%
-      mutate(
-        Pathway = str_trunc(Pathway, width = 18),
-        PValue = formatC(PValue, digits = 1, format = "e"),
-        FDR = formatC(FDR, digits = 1, format = "e"),
-        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
-        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
-      )
-  })
-```
-
-### V1482Afs_het
-
-```{r}
-datatable(hm_fry[[1]])
-```
-
-### R122Pfs_het
-
-```{r}
-datatable(hm_fry[[2]])
-```
-
-### Trans
-
-```{r}
-datatable(hm_fry[[3]])
-```
-
-## KEGG {.tabset .tabset-pills}
-
-```{r kg_fry}
-kg_fry <- contrasts %>%
-  apply(MARGIN = 2, function(contrast){
-    cpm(dgeList$counts, log = TRUE) %>%
-      fry(
-        index = kgByID,
-        design = design,
-        contrast = contrast,
-        sort = "mixed"
-      ) %>%
-      rownames_to_column("Pathway") %>%
-      as_tibble() %>%
-      mutate(
-        Pathway = str_trunc(Pathway, width = 18),
-        PValue = formatC(PValue, digits = 1, format = "e"),
-        FDR = formatC(FDR, digits = 1, format = "e"),
-        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
-        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
-      )
-  })
-```
-
-### V1482Afs_het
-
-```{r}
-datatable(kg_fry[[1]])
-```
-
-### R122Pfs_het
-
-```{r}
-datatable(kg_fry[[2]])
-```
-
-### Trans
-
-```{r}
-datatable(kg_fry[[3]])
-```
-
-## Wikipathways {.tabset .tabset-pills}
-
-```{r wk_fry}
-wk_fry <- contrasts %>%
-  apply(MARGIN = 2, function(contrast){
-    cpm(dgeList$counts, log = TRUE) %>%
-      fry(
-        index = wkByID,
-        design = design,
-        contrast = contrast,
-        sort = "mixed"
-      ) %>%
-      rownames_to_column("Pathway") %>%
-      as_tibble() %>%
-      mutate(
-        Pathway = str_trunc(Pathway, width = 18),
-        PValue = formatC(PValue, digits = 1, format = "e"),
-        FDR = formatC(FDR, digits = 1, format = "e"),
-        PValue.Mixed = formatC(PValue.Mixed, digits = 1, format = "e"),
-        FDR.Mixed = formatC(FDR.Mixed, digits = 1, format = "e"),
-      )
-  })
-```
-
-### V1482Afs_het
-
-```{r}
-datatable(wk_fry[[1]])
-```
-
-### R122Pfs_het
-
-```{r}
-datatable(wk_fry[[2]])
-```
-
-### Trans
-
-```{r}
-datatable(wk_fry[[3]])
-```
-
-# eQTL bias removal {.tabset}
-
-```{r dist_winRanges}
-dist_winRanges <- readRDS(here("files/dist_winRanges.Rds"))
-```
-
-```{r}
-genes_diversity <- readRDS(here("files/genes_diversity.Rds"))
-```
-
 ```{r}
 thresholds <- seq(0.1, 1.0, 0.1)
 ```
 
 ```{r}
 threshOutcomes <- sapply(colnames(contrasts), function(cont){
-  topT_div <- as_tibble(genes_diversity[[cont]]) %>%
+  topT_div <- as_tibble(masterGR[[cont]]) %>%
     dplyr::select(gene_id, diversity) %>%
     left_join(topTables[[cont]])
   n_DE <- topT_div %>%
@@ -784,15 +650,15 @@ threshPlots_de <- lapply(threshOutcomes, function(x){
 })
 ```
 
-## Fry
+## Fry {.tabset .tabset-pills}
 
-### Hallmark {.tabset .tabset-pills}
+### Hallmark {.tabset}
 
 ```{r hm_fry_eqtl}
 hm_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -812,7 +678,7 @@ hm_fry_eqtl <- colnames(contrasts) %>%
         mutate(
           diversity_threshold = threshVal,
           rank = row_number(),
-          sig = FDR.Mixed < 0.05
+          sig = FDR < 0.05 | FDR.Mixed < 0.05
         )
     })
   }, simplify = FALSE)
@@ -940,67 +806,69 @@ pPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_hm_fry[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
+tagList({
+  lapply(seq_along(hm_fry_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        PValue = scientific(PValue),
+        FDR = scientific(FDR),
+        PValue.Mixed = scientific(PValue.Mixed),
+        FDR.Mixed = scientific(FDR.Mixed)
+      ) %>%
+      dplyr::select(
+        Pathway, Direction, NGenes, PValue, FDR, PValue.Mixed, FDR.Mixed, sig
+      ) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = hm_fry_eqtl, name = names(hm_fry_eqtl))
+})
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_hm_fry), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_hm_fry,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
 )
 ```
 
-```{r}
-if (length(hm_fry_eqtl_sig[[1]])) {
-  pPlots_hm_fry[[1]]
-}
+```{r results='hide'}
+lapply(seq_along(pPlots_hm_fry), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_hm_fry, sig = hm_fry_eqtl_sig)
 ```
 
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_hm_fry[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(hm_fry_eqtl_sig[[2]])) {
-  pPlots_hm_fry[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_hm_fry[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(hm_fry_eqtl_sig[[3]])) {
-  pPlots_hm_fry[[3]]
-}
-```
-
-### KEGG {.tabset .tabset-pills}
+### KEGG {.tabset}
 
 ```{r kg_fry_eqtl}
 kg_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -1148,67 +1016,69 @@ pPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_kg_fry[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
+tagList({
+  lapply(seq_along(kg_fry_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        PValue = scientific(PValue),
+        FDR = scientific(FDR),
+        PValue.Mixed = scientific(PValue.Mixed),
+        FDR.Mixed = scientific(FDR.Mixed)
+      ) %>%
+      dplyr::select(
+        Pathway, Direction, NGenes, PValue, FDR, PValue.Mixed, FDR.Mixed, sig
+      ) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = kg_fry_eqtl, name = names(kg_fry_eqtl))
+})
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_kg_fry), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_kg_fry,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
 )
 ```
 
-```{r}
-if (length(kg_fry_eqtl_sig[[1]])) {
-  pPlots_kg_fry[[1]]
-}
+```{r results='hide'}
+lapply(seq_along(pPlots_kg_fry), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_kg_fry, sig = kg_fry_eqtl_sig)
 ```
 
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_kg_fry[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(kg_fry_eqtl_sig[[2]])) {
-  pPlots_kg_fry[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_kg_fry[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(kg_fry_eqtl_sig[[3]])) {
-  pPlots_kg_fry[[3]]
-}
-```
-
-### Wikipathways {.tabset .tabset-pills}
+### Wikipathways {.tabset}
 
 ```{r wk_fry_eqtl}
 wk_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -1356,61 +1226,63 @@ pPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_wk_fry[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
+tagList({
+  lapply(seq_along(wk_fry_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        PValue = scientific(PValue),
+        FDR = scientific(FDR),
+        PValue.Mixed = scientific(PValue.Mixed),
+        FDR.Mixed = scientific(FDR.Mixed)
+      ) %>%
+      dplyr::select(
+        Pathway, Direction, NGenes, PValue, FDR, PValue.Mixed, FDR.Mixed, sig
+      ) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = wk_fry_eqtl, name = names(wk_fry_eqtl))
+})
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_wk_fry), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_wk_fry,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
 )
 ```
 
-```{r}
-if (length(wk_fry_eqtl_sig[[1]])) {
-  pPlots_wk_fry[[1]]
-}
+```{r results='hide'}
+lapply(seq_along(pPlots_wk_fry), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_wk_fry, sig = wk_fry_eqtl_sig)
 ```
 
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_wk_fry[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(wk_fry_eqtl_sig[[2]])) {
-  pPlots_wk_fry[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_wk_fry[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(wk_fry_eqtl_sig[[3]])) {
-  pPlots_wk_fry[[3]]
-}
-```
-
-## GSEA
+## GSEA {.tabset .tabset-pills}
 
 ```{r}
 ranks_d <- lapply(topTables, function(x){
@@ -1430,14 +1302,14 @@ ranks_nd <- lapply(topTables, function(x){
 })
 ```
 
-### Hallmark {.tabset .tabset-pills}
+### Hallmark {.tabset}
 
 ```{r hm_gsea_eqtl}
 set.seed(220615)
 hm_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -1583,68 +1455,68 @@ pPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_hm_gsea[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
+tagList({
+  lapply(seq_along(hm_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, edgeSize, pval, FDR, sig) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = hm_gsea_eqtl, name = names(hm_gsea_eqtl))
+})
+
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_hm_gsea), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_hm_gsea,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
 )
 ```
 
-```{r}
-if (length(hm_gsea_eqtl_sig[[1]])) {
-  pPlots_hm_gsea[[1]]
-}
+```{r results='hide'}
+lapply(seq_along(pPlots_hm_gsea), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_hm_gsea, sig = hm_gsea_eqtl_sig)
 ```
 
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_hm_gsea[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(hm_gsea_eqtl_sig[[2]])) {
-  pPlots_hm_gsea[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_hm_gsea[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(hm_gsea_eqtl_sig[[3]])) {
-  pPlots_hm_gsea[[3]]
-}
-```
-
-### KEGG {.tabset .tabset-pills}
+### KEGG {.tabset}
 
 ```{r kg_gsea_eqtl}
 set.seed(220615)
 kg_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -1790,68 +1662,68 @@ pPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_kg_gsea[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
+tagList({
+  lapply(seq_along(kg_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, edgeSize, pval, FDR, sig) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = kg_gsea_eqtl, name = names(kg_gsea_eqtl))
+})
+
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_kg_gsea), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_kg_gsea,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
 )
 ```
 
-```{r}
-if (length(kg_gsea_eqtl_sig[[1]])) {
-  pPlots_kg_gsea[[1]]
-}
+```{r results='hide'}
+lapply(seq_along(pPlots_kg_gsea), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_kg_gsea, sig = kg_gsea_eqtl_sig)
 ```
 
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_kg_gsea[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(kg_gsea_eqtl_sig[[2]])) {
-  pPlots_kg_gsea[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_kg_gsea[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(kg_gsea_eqtl_sig[[3]])) {
-  pPlots_kg_gsea[[3]]
-}
-```
-
-### Wikipathways {.tabset .tabset-pills}
+### Wikipathways {.tabset}
 
 ```{r wk_gsea_eqtl}
 set.seed(220615)
 wk_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- genes_diversity[[cont]] %>%
+      genes_passed <- masterGR[[cont]] %>%
         as_tibble() %>%
         dplyr::filter(diversity <= threshVal) %>%
         pull(gene_id)
@@ -1997,73 +1869,282 @@ pPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
 }, simplify = FALSE)
 ```
 
-#### V1482Afs_het
+#### Prior to thresholding
 
 ```{r}
-ggarrange(
-  rankPlots_wk_gsea[[1]],
-  NULL,
-  threshPlots_de[[1]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(wk_gsea_eqtl_sig[[1]])) {
-  pPlots_wk_gsea[[1]]
-}
-```
-
-#### R122Pfs_het
-
-```{r}
-ggarrange(
-  rankPlots_wk_gsea[[2]],
-  NULL,
-  threshPlots_de[[2]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(wk_gsea_eqtl_sig[[2]])) {
-  pPlots_wk_gsea[[2]]
-}
-```
-
-#### Trans
-
-```{r}
-ggarrange(
-  rankPlots_wk_gsea[[3]],
-  NULL,
-  threshPlots_de[[3]],
-  ncol = 1,
-  heights = c(4,0.2,1)
-)
-```
-
-```{r}
-if (length(wk_gsea_eqtl_sig[[3]])) {
-  pPlots_wk_gsea[[3]]
-}
-```
-
-# Tmp
-
-```{r}
-ttdiv <- map2(topTables, genes_diversity, function(tt, div){
-  left_join(tt, as_tibble(div))
+tagList({
+  lapply(seq_along(wk_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, edgeSize, pval, FDR, sig) %>%
+      dplyr::arrange(-sig) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = wk_gsea_eqtl, name = names(wk_gsea_eqtl))
 })
-lapply(seq_along(ttdiv), function(x){
-  mutate(ttdiv[[x]], contrast = names(ttdiv)[x]) %>%
-    dplyr::filter(!is.na(diversity))
-}) %>%
-  bind_rows() %>%
-  ggplot(aes(x = diversity, y = -log10(PValue))) +
-  geom_point() +
-  labs(x = "Diversity score", y = log10plab) +
-  facet_wrap(~contrast, ncol = 1)
+
+```
+
+#### Effects of thresholding
+
+```{r, results='hide'}
+lapply(seq_along(rankPlots_wk_gsea), function(i, rankPlot, threshPlot, name){
+  ggarrange(
+    rankPlot[[i]],
+    NULL,
+    threshPlot[[i]],
+    ncol = 1,
+    heights = c(4,0.2,1)
+  ) %>%
+    annotate_figure(
+      top = text_grob(
+        paste0("Fig ", i, ": Genotype - ", name[[i]]),
+        face = "bold"
+      )
+    )
+},
+rankPlot = rankPlots_wk_gsea,
+threshPlot = threshPlots_de,
+name = names(threshPlots_de)
+)
+```
+
+```{r results='hide'}
+lapply(seq_along(pPlots_wk_gsea), function(i, pPlot, sig){
+  if (length(sig[[i]])) {
+    pPlot[[i]]
+  }
+}, pPlot = pPlots_wk_gsea, sig = wk_gsea_eqtl_sig)
+```
+
+# Weighting the ranked list {.tabset}
+
+```{r}
+ranks_d_dar <- lapply(masterGR, function(x){
+  x %>%
+    as_tibble() %>%
+    mutate(stat = (-log10(PValue) * sign(logFC)) * (1 - diversity)) %>%
+    dplyr::arrange(desc(stat)) %>%
+    with(structure(stat, names = gene_id))
+})
+```
+
+```{r, results='hide'}
+map2(ranks_d, ranks_d_dar, function(before, after){
+  before <- enframe(before, name = "gene_id", value = "before") %>%
+    mutate(rank_before = seq(1, length(gene_id), by = 1))
+  after <- enframe(after, name = "gene_id", value = "after") %>%
+    mutate(rank_after = seq(1, length(gene_id), by = 1))
+  left_join(before, after) %>%
+    ggplot(aes(rank_before, rank_after)) +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0, colour = "blue")
+})
+```
+
+## Hallmark {.tabset .tabset-pills}
+
+```{r}
+set.seed(220615)
+hm_gsea_dar <- colnames(contrasts) %>%
+  sapply(function(cont){
+    genes_passed <- masterGR[[cont]] %>%
+      as_tibble() %>%
+      pull(gene_id)
+    fgseaMultilevel(hmByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+      as_tibble() %>%
+      dplyr::rename(FDR = padj, Pathway = pathway) %>%
+      dplyr::arrange(pval) %>%
+      mutate(
+        edgeSize = vapply(leadingEdge, length, numeric(1)),
+        Direction = case_when(
+          sign(ES) == 1 ~ "Up",
+          sign(ES) == -1 ~ "Down",
+          sign(ES) == 0 ~ "None"
+        ),
+        rank = row_number(),
+        bonf.p.adj = p.adjust(pval, "bonferroni"),
+        sig = bonf.p.adj < 0.05
+      )
+  }, simplify = FALSE)
+```
+
+### Before weighting
+
+```{r}
+tagList({
+  lapply(seq_along(hm_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = hm_gsea_eqtl, name = names(hm_gsea_eqtl))
+})
+```
+
+### After weighting
+
+```{r}
+tagList({
+  lapply(seq_along(hm_gsea_dar),  function(i, tbl, name){
+    tbl[[i]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = hm_gsea_dar, name = names(hm_gsea_dar))
+})
+```
+
+## KEGG {.tabset .tabset-pills}
+
+```{r}
+set.seed(220615)
+kg_gsea_dar <- colnames(contrasts) %>%
+  sapply(function(cont){
+    genes_passed <- masterGR[[cont]] %>%
+      as_tibble() %>%
+      pull(gene_id)
+    fgseaMultilevel(kgByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+      as_tibble() %>%
+      dplyr::rename(FDR = padj, Pathway = pathway) %>%
+      dplyr::arrange(pval) %>%
+      mutate(
+        edgeSize = vapply(leadingEdge, length, numeric(1)),
+        Direction = case_when(
+          sign(ES) == 1 ~ "Up",
+          sign(ES) == -1 ~ "Down",
+          sign(ES) == 0 ~ "None"
+        ),
+        rank = row_number(),
+        bonf.p.adj = p.adjust(pval, "bonferroni"),
+        sig = bonf.p.adj < 0.05
+      )
+  }, simplify = FALSE)
+```
+
+### Before weighting
+
+```{r}
+tagList({
+  lapply(seq_along(kg_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = kg_gsea_eqtl, name = names(kg_gsea_eqtl))
+})
+```
+
+### After weighting
+
+```{r}
+tagList({
+  lapply(seq_along(kg_gsea_dar),  function(i, tbl, name){
+    tbl[[i]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = kg_gsea_dar, name = names(kg_gsea_dar))
+})
+```
+
+## Wikipathways {.tabset .tabset-pills}
+
+```{r}
+set.seed(220615)
+wk_gsea_dar <- colnames(contrasts) %>%
+  sapply(function(cont){
+    genes_passed <- masterGR[[cont]] %>%
+      as_tibble() %>%
+      pull(gene_id)
+    fgseaMultilevel(wkByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
+      as_tibble() %>%
+      dplyr::rename(FDR = padj, Pathway = pathway) %>%
+      dplyr::arrange(pval) %>%
+      mutate(
+        edgeSize = vapply(leadingEdge, length, numeric(1)),
+        Direction = case_when(
+          sign(ES) == 1 ~ "Up",
+          sign(ES) == -1 ~ "Down",
+          sign(ES) == 0 ~ "None"
+        ),
+        rank = row_number(),
+        bonf.p.adj = p.adjust(pval, "bonferroni"),
+        sig = bonf.p.adj < 0.05
+      )
+  }, simplify = FALSE)
+```
+
+### Before weighting
+
+```{r}
+tagList({
+  lapply(seq_along(wk_gsea_eqtl),  function(i, tbl, name){
+    tbl[[i]][[10]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = wk_gsea_eqtl, name = names(wk_gsea_eqtl))
+})
+```
+
+### After weighting
+
+```{r}
+tagList({
+  lapply(seq_along(wk_gsea_dar),  function(i, tbl, name){
+    tbl[[i]] %>%
+      mutate(
+        sig = FDR < 0.05,
+        pval = scientific(pval),
+        FDR = scientific(FDR)
+      ) %>%
+      dplyr::select(Pathway, Direction, pval, FDR, sig, edgeSize) %>%
+      lbComplexDT(
+        cap = paste0("Table ", i, ": Genotype - ", name[[i]]),
+        rownames = TRUE
+      )
+  }, tbl = wk_gsea_dar, name = names(wk_gsea_dar))
+})
 ```
