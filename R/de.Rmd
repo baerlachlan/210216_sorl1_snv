@@ -305,8 +305,6 @@ Here the null hypothesis, $H_0$, is testing that the true values of the coeffici
 Due to the subtle effects of the mutation outlined in the PCA, genes were considered to be DE if they had an FDR-adjusted p-value < 0.05, as opposed to more stringent error rate controls such as the Bonferroni method.
 
 ```{r}
-alpha <- 0.05
-minLfc <- 1
 fit <- estimateDisp(dgeList, design) %>%
   glmFit()
 topTables <- colnames(design)[2:4] %>%
