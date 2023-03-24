@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Lachlan Baer" />
+
+
+<title>DAR Analysis</title>
+
+<script src="site_libs/header-attrs-2.20/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/flatly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">210216_sorl1_snv</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="de.html">DE</a>
+</li>
+<li>
+  <a href="dar.html">DAR</a>
+</li>
+<li>
+  <a href="enrichment.html">Enrichment</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/baerlachlan/210216_sorl1_snv">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">DAR Analysis</h1>
+<h3 class="subtitle">210216_sorl_snv dataset</h3>
+<h4 class="author">Lachlan Baer</h4>
+<h4 class="date">24 March, 2023</h4>
+
+</div>
+
+
+<div id="setup" class="section level1">
+<h1>Setup</h1>
+<p>Load libraries and set global options.</p>
+<pre class="r"><code>suppressPackageStartupMessages({
+  ## Common
+  library(tidyverse)
+  library(magrittr)
+  library(here)
+  library(AnnotationHub)
+  library(purrr)
+  library(scales)
+  library(kableExtra)
+  # library(tictoc)  # Causes a bug in rowRanges()
+  library(ggrepel)
+  library(RColorBrewer)
+  library(ggpubr)
+  library(pander)
+  library(rmarkdown)
+  library(viridis)
+  ## Project specific
+  library(VariantAnnotation)
+  library(Gviz)
+  library(zoo)
+  library(msigdbr)
+  library(readxl)
+  library(limma)
+})</code></pre>
+<pre class="r"><code>if (interactive()) setwd(here::here())
+theme_set(theme_bw())</code></pre>
+<pre class="r"><code># By default Gviz expects UCSC chromosome names
+# We&#39;re working with Ensembl so let&#39;s turn this off
+options(ucscChromosomeNames = FALSE)</code></pre>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This document contains the Differential Allelic Representation (DAR)
+analysis. A multi-sample <code>VCF</code> is required containing
+genotypes at loci where a SNP was detected in at least one sample. This
+can be reproduced using the <code>snakemake</code> workflow located in
+the <code>analysis-variants/</code> folder.</p>
+</div>
+<div id="ensdb" class="section level2">
+<h2>EnsDb</h2>
+<pre class="r"><code>ens_species &lt;- &quot;Danio rerio&quot;
+ens_release &lt;- &quot;101&quot;
+ens_assembly &lt;- &quot;GRCz11&quot;</code></pre>
+<p>Grab genome feature annotations for Danio rerio Ensembl release 101
+(genome assembly GRCz11).</p>
+<pre class="r"><code>ah &lt;- AnnotationHub() %&gt;%
+  subset(species == ens_species) %&gt;%
+  subset(rdataclass == &quot;EnsDb&quot;)
+ahId &lt;- ah$ah_id[str_detect(ah$title, ens_release)]
+ensDb &lt;- ah[[ahId]]</code></pre>
+<pre class="r"><code># Filter for primary chromosomes
+chrInfo &lt;- getChromInfoFromEnsembl(ens_assembly, release = ens_release) %&gt;%
+  dplyr::filter(coord_system == &quot;chromosome&quot;)
+primary_chrs &lt;- chrInfo$name</code></pre>
+<pre class="r"><code>genes &lt;- genes(ensDb, filter = SeqNameFilter(primary_chrs))
+mcols(genes) &lt;- mcols(genes)[
+  c(&quot;gene_id&quot;, &quot;gene_name&quot;, &quot;gene_biotype&quot;, &quot;entrezid&quot;)
+]</code></pre>
+</div>
+<div id="metadata" class="section level2">
+<h2>Metadata</h2>
+<p>Load and clean the sample metadata by renaming columns following
+<code>R</code> naming conventions and setting categorical variables as
+factors.</p>
+<pre class="r"><code>metadata &lt;- read_csv(here(&quot;files/SraRunTable.txt&quot;)) %&gt;%
+  as.data.frame() %&gt;%
+  dplyr::arrange(Run) %&gt;%
+  mutate(
+    genotype = as.factor(case_when(
+      Genotype == &quot;wild-type&quot; ~ &quot;WT&quot;,
+      Genotype == &quot;sorl1V1482Afs/+&quot; ~ &quot;V1482Afs_het&quot;,
+      Genotype == &quot;sorl1R122Pfs/+&quot; ~ &quot;R122Pfs_het&quot;,
+      Genotype == &quot;sorl1V1482Afs/R122Pfs&quot; ~ &quot;Trans&quot;,
+    )),
+    alias = c(
+      paste0(rep(&quot;WT&quot;, 8), seq(1, 8)),
+      paste0(rep(&quot;V1482Afs&quot;, 6), seq(1, 6)),
+      paste0(rep(&quot;R122Pfs&quot;, 4), seq(1, 4)),
+      paste0(rep(&quot;Trans&quot;, 6), seq(1, 6))
+    ),
+    group = genotype
+  ) %&gt;%
+  dplyr::select(
+    sample = Run, genotype, genotype2 = Genotype, alias, gender, tank = Tank, group
+  )</code></pre>
+<pre class="r"><code>metadata %&gt;%
+  kable(
+    align = &quot;l&quot;,
+    caption = &quot;Sample metadata&quot;
+  ) %&gt;%
+  kable_styling(
+    bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)
+  )</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<caption>
+Sample metadata
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+sample
+</th>
+<th style="text-align:left;">
+genotype
+</th>
+<th style="text-align:left;">
+genotype2
+</th>
+<th style="text-align:left;">
+alias
+</th>
+<th style="text-align:left;">
+gender
+</th>
+<th style="text-align:left;">
+tank
+</th>
+<th style="text-align:left;">
+group
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+SRR11951228
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT1
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951229
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT2
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951230
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT3
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951231
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT4
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951232
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT5
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951233
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT6
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951234
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT7
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951235
+</td>
+<td style="text-align:left;">
+WT
+</td>
+<td style="text-align:left;">
+wild-type
+</td>
+<td style="text-align:left;">
+WT8
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+WT
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951236
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs1
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951237
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs2
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951238
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs3
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951239
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs4
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951240
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs5
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951241
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/+
+</td>
+<td style="text-align:left;">
+V1482Afs6
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+V1482Afs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951242
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+<td style="text-align:left;">
+sorl1R122Pfs/+
+</td>
+<td style="text-align:left;">
+R122Pfs1
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951243
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+<td style="text-align:left;">
+sorl1R122Pfs/+
+</td>
+<td style="text-align:left;">
+R122Pfs2
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951244
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+<td style="text-align:left;">
+sorl1R122Pfs/+
+</td>
+<td style="text-align:left;">
+R122Pfs3
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951245
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+<td style="text-align:left;">
+sorl1R122Pfs/+
+</td>
+<td style="text-align:left;">
+R122Pfs4
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+R122Pfs_het
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951246
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans1
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951247
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans2
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951248
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans3
+</td>
+<td style="text-align:left;">
+female
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951249
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans4
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951250
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans5
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SRR11951251
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+<td style="text-align:left;">
+sorl1V1482Afs/R122Pfs
+</td>
+<td style="text-align:left;">
+Trans6
+</td>
+<td style="text-align:left;">
+male
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+Trans
+</td>
+</tr>
+</tbody>
+</table>
+<p>Set up colours for plotting by genotype. Going with a
+colourblind-friendly palette (<code>Set2</code>) for best
+accessibility.</p>
+<pre class="r"><code>genoCols &lt;- metadata$genotype %&gt;%
+  levels() %&gt;%
+  length() %&gt;%
+  brewer.pal(&quot;Set2&quot;) %&gt;%
+  setNames(levels(metadata$genotype))</code></pre>
+<p>Now define our samples that belong to each group. We will use this
+later in the analysis when accessing relevant samples from the
+<code>VCF</code> file.</p>
+<pre class="r"><code>samplesByGroup &lt;- metadata %&gt;%
+  split(f = .$group) %&gt;%
+  sapply(function(x){
+    pull(x, sample)
+  }, simplify = FALSE)</code></pre>
+</div>
+</div>
+<div id="de-data" class="section level1">
+<h1>DE data</h1>
+<p>Load in <code>topTable</code>s from the DE analysis.</p>
+<pre class="r"><code>topTables &lt;- readRDS(here(&quot;files/topTables.Rds&quot;))</code></pre>
+<p>Also pull the gene IDs for DE genes.</p>
+<pre class="r"><code>deGenes &lt;- sapply(topTables, function(x){
+  dplyr::filter(x, DE) %&gt;%
+    pull(gene_id)
+}, simplify = FALSE)</code></pre>
+</div>
+<div id="variant-data" class="section level1">
+<h1>Variant data</h1>
+<p>Variant data from the <code>GVCF</code> file is parsed into a
+<code>VCF</code> class object using the <code>VariantAnnotation</code>
+package. Note that this file is large and therefore does not exist in
+the Git repository, however, it can be recreated using the accompanying
+<code>snakemake</code> workflow.</p>
+<pre class="r"><code>vcf_path &lt;- file.path(
+  &quot;/hpcfs/users/a1647910/210216_sorl1_snv&quot;,
+  &quot;analysis-variants/results/07_variants/6_select/all_samples.vcf.gz&quot;
+)
+svp &lt;- ScanVcfParam(info = &quot;&quot;, geno = c(&quot;GT&quot;, &quot;GQ&quot;))
+vcf &lt;- suppressWarnings({
+  readVcf(vcf_path, genome = genome(ensDb))
+})</code></pre>
+<p>A number of accessor functions exist for the <code>VCF</code> object.
+We will use the following.</p>
+<ul>
+<li><p><code>rowRanges()</code>: Contains information from the CHROM,
+POS, and ID fields of the VCF file. Returned as a <code>GRanges</code>
+object. We will save this object to our <code>rr</code>
+variable.</p></li>
+<li><p><code>geno()</code>: Contains data described in the FORMAT fields
+of the VCF. Returned as a <code>SimpleList</code>. We will extract the
+genotype information (GT) and save to the <code>gt</code>
+variable.</p></li>
+</ul>
+<pre class="r"><code>rr &lt;- rowRanges(vcf) %&gt;%
+  plyranges::select(-paramRangeID)</code></pre>
+<p>Below is a snippet of the <code>rr</code> data:</p>
+<pre class="r"><code>head(rr)</code></pre>
+<pre><code>## GRanges object with 6 ranges and 4 metadata columns:
+##               seqnames    ranges strand |            REF                ALT      QUAL      FILTER
+##                  &lt;Rle&gt; &lt;IRanges&gt;  &lt;Rle&gt; | &lt;DNAStringSet&gt; &lt;DNAStringSetList&gt; &lt;numeric&gt; &lt;character&gt;
+##    1:6568_G/A        1      6568      * |              G                  A     66.18        PASS
+##    1:6698_G/A        1      6698      * |              G                  A  16949.06        PASS
+##    1:6746_T/C        1      6746      * |              T                  C  18639.10        PASS
+##    1:7218_A/G        1      7218      * |              A                  G    149.84        PASS
+##   1:10093_C/T        1     10093      * |              C                  T   8316.15        PASS
+##   1:14083_G/A        1     14083      * |              G                  A   4604.98        PASS
+##   -------
+##   seqinfo: 993 sequences from GRCz11 genome</code></pre>
+<pre class="r"><code>gt &lt;- geno(vcf)$GT</code></pre>
+<p>The genotype data contains phasing information where possible.
+Phasing is indicated by the use of <code>|</code> as opposed to
+<code>/</code> for SNPs that are not phased. This information is not
+required for DAR analysis and complicates downstream processing, so
+let’s remove the phasing information and make all fields consistent.</p>
+<pre class="r"><code>unphase_gt &lt;- function(x){
+  str_replace(x, &quot;\\|&quot;, &quot;\\/&quot;)
+}
+gt &lt;- gt %&gt;%
+  as.data.frame() %&gt;%
+  mutate(across(everything(), unphase_gt))</code></pre>
+<p>Below is a snippet of the <code>gt</code> data:</p>
+<pre class="r"><code>head(gt)</code></pre>
+<pre><code>##             SRR11951228 SRR11951229 SRR11951230 SRR11951231 SRR11951232 SRR11951233 SRR11951234 SRR11951235 SRR11951236 SRR11951237 SRR11951238 SRR11951239
+## 1:6568_G/A          ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         1/1
+## 1:6698_G/A          0/1         0/1         1/1         0/1         1/1         1/1         0/1         0/1         0/1         0/1         0/1         0/1
+## 1:6746_T/C          0/1         0/0         1/1         0/1         1/1         ./.         0/1         0/1         0/1         0/1         0/1         0/1
+## 1:7218_A/G          ./.         ./.         ./.         ./.         ./.         ./.         1/1         ./.         ./.         ./.         ./.         1/1
+## 1:10093_C/T         0/1         0/1         0/0         0/1         0/0         0/0         0/1         0/1         0/1         0/1         0/1         0/1
+## 1:14083_G/A         0/1         0/1         1/1         0/1         1/1         1/1         0/1         0/1         0/1         0/1         0/1         0/1
+##             SRR11951240 SRR11951241 SRR11951242 SRR11951243 SRR11951244 SRR11951245 SRR11951246 SRR11951247 SRR11951248 SRR11951249 SRR11951250 SRR11951251
+## 1:6568_G/A          ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.
+## 1:6698_G/A          0/1         0/1         0/1         0/1         0/1         1/1         1/1         1/1         1/1         0/1         0/1         1/1
+## 1:6746_T/C          0/1         0/1         0/1         0/1         0/1         1/1         1/1         1/1         1/1         0/1         0/1         1/1
+## 1:7218_A/G          ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         ./.         1/1
+## 1:10093_C/T         0/1         0/1         0/1         0/1         0/1         0/0         0/0         0/0         0/0         0/1         0/1         0/0
+## 1:14083_G/A         0/1         0/1         0/1         0/1         0/1         1/1         1/1         1/1         1/1         0/1         0/1         1/1</code></pre>
+</div>
+<div id="differential-allelic-representation" class="section level1">
+<h1>Differential Allelic Representation</h1>
+<p>Genotypes are reported as numeric indices. <code>0</code> indicates
+the reference allele, <code>1</code> is the first alternate allele,
+<code>2</code> is the second alternate allele, and so on. The reference
+and alternate allele information is contained in our <code>rr</code>
+object if ever required. However, for DAR analysis, we can work directly
+with the indices as they are consistent across all samples for a single
+variant position.</p>
+<p>We aim to calculate a DAR metric at each suitable variant locus. This
+requires us to firstly summarise the genotype data into counts of the
+alleles reported at each variant locus.</p>
+<pre class="r"><code>## This code takes a while to execute
+## So save as Rds file for quicker processing in future
+alleleCounts_path &lt;- file.path(here(&quot;files/alleleCounts.Rds&quot;))
+if (!file.exists(alleleCounts_path)) {
+  if (!dir.exists(dirname(alleleCounts_path))) {
+    dir.create(dirname(alleleCounts_path), recursive = TRUE)
+  }
+  alleleCounts &lt;- lapply(samplesByGroup, function(samples){
+    apply(gt[,samples], 1, function(gtInGroup){
+      alleles &lt;- gtInGroup %&gt;%
+        as.character() %&gt;%
+        str_split(&quot;/&quot;) %&gt;%
+        unlist()
+      tibble(
+        n_called = sum(alleles != &quot;.&quot;),
+        n_nocall = sum(alleles == &quot;.&quot;),
+        n_0 = sum(alleles == &quot;0&quot;),
+        n_1 = sum(alleles == &quot;1&quot;),
+        n_2 = sum(alleles == &quot;2&quot;),
+        n_3 = sum(alleles == &quot;3&quot;)
+      )
+    }) %&gt;%
+      bind_rows()
+  })
+  saveRDS(alleleCounts, alleleCounts_path)
+} else {
+  alleleCounts &lt;- readRDS(alleleCounts_path)
+}</code></pre>
+<p>Not all samples have genotype calls, so we normalise by converting
+the allele counts into a proportion of total counts at each variant
+locus. We also filter variant loci within each sample group with the
+criterion number of called genotypes &gt; number of missing genotypes.
+Loci that do not satisfy this criterion have their proportions are
+returned as <code>NA</code>’s, so that we can retain the object
+structure and join it back to our <code>rowRanges</code> before removing
+the filtered loci.</p>
+<pre class="r"><code>alleleProps &lt;- lapply(alleleCounts, function(counts){
+  counts %&gt;%
+    bind_rows() %&gt;%
+    mutate(
+      across(
+        .cols = c(&quot;n_0&quot;, &quot;n_1&quot;, &quot;n_2&quot;, &quot;n_3&quot;),
+        .fns = ~ ifelse(n_called &gt; n_nocall, .x / n_called, NA)
+      )
+    ) %&gt;%
+    dplyr::select(-n_called, -n_nocall) %&gt;%
+    set_colnames(str_replace(colnames(.), &quot;n_&quot;, &quot;prop_&quot;))
+})</code></pre>
+<p>Now that we have normalised values of allelic representation at each
+variant locus within our sample groups, we can calculate the DAR metric
+between groups. Firstly, we manually define our contrasts of
+interest.</p>
+<pre class="r"><code>contrasts &lt;- makeContrasts(
+  V1482Afs_het = V1482Afs_het - WT,
+  R122Pfs_het = R122Pfs_het - WT,
+  Trans = Trans - WT,
+  levels = names(alleleProps)
+)</code></pre>
+<p>Also choose the number of variant loci to define our elastic window
+size for smoothing the DAR metric. This needs to be an odd number, as we
+need to include the variant position and an equal number of loci either
+side.</p>
+<pre class="r"><code>winSize &lt;- 11</code></pre>
+<p>With a chosen elastic window size of 11 variants, this will smooth
+the DAR metric at each locus with the DAR values of the 5 loci either
+side. Note that for loci at the ends of each chromosome, the window size
+will be slightly smaller to avoid including DAR values from other
+chromosomes.</p>
+<p>Now we calculate the Euclidean distance between normalised allelic
+representation of the contrasted sample groups. Any variant loci that
+were previously filtered due to not containing enough genotype
+information are returned as <code>NA</code>, which we can now remove. We
+convert the Euclidean distance to the DAR metric by dividing by <span
+class="math display">\[\sqrt{2}\]</span>, resulting in an
+easy-to-interpret value between 0 and 1, where 0 represents identical
+allelic representation and 1 represents complete diversity. Lastly we
+smooth the DAR values as described above.</p>
+<pre class="r"><code>## This code takes a while to execute
+## So save as Rds file for quicker processing in future
+DAR_path &lt;- file.path(here(&quot;files/DAR.Rds&quot;))
+if (!file.exists(DAR_path)) {
+  if (!dir.exists(dirname(DAR_path))) {
+    dir.create(dirname(DAR_path), recursive = TRUE)
+  }
+  DAR &lt;- apply(contrasts, 2, function(col){
+    ## Grab the sample groups in each contrast
+    contrast &lt;- col %&gt;%
+      enframe(name = &quot;group&quot;, value = &quot;contrast&quot;) %&gt;%
+      dplyr::filter(contrast != 0) %&gt;%
+      pull(group)
+    stopifnot(length(contrast) == 2)
+    ## Return the allele proportions for each sample group in each contrast
+    alleleProps[contrast]
+  }, simplify = FALSE) %&gt;%
+    sapply(function(props){
+      ## Calculate the Euclidean distance
+      dist &lt;- vapply(seq(length(rr)), function(ind){
+        rbind(props[[1]][ind,], props[[2]][ind,]) %&gt;%
+          dist() %&gt;%
+          as.numeric()
+      }, numeric(1))
+      ## Bind the calculated Euclidean distance to our rowRanges
+      rr %&gt;%
+        plyranges::select(-everything()) %&gt;%
+        as_tibble() %&gt;%
+        mutate(dist = dist) %&gt;%
+        ## Remove any loci with NA DAR as this means they were filtered
+        ## in at least one of the contrasted sample groups
+        dplyr::filter(!is.na(dist)) %&gt;%
+        ## Drop levels so we don&#39;t loop over chromosomes/scaffolds with no data
+        droplevels() %&gt;%
+        ## Split by chromosome to avoid including DAR values from multiple
+        ## chromosomes when smoothing
+        split(f = .$seqnames) %&gt;%
+        lapply(function(chr){
+          dplyr::mutate(
+            chr,
+            ## sqrt(2) is the maximum dist
+            dar = dist / sqrt(2),
+            dar_smooth = rollapply(dar, width = winSize, mean, partial = TRUE),
+            win_start = lag(start, n = (winSize - 1) / 2),
+            win_end = lead(start, n = (winSize - 1) / 2),
+            ## lag() and lead() will return NA if index is out of range,
+            ## so let&#39;s adjust these
+            win_start = ifelse(is.na(win_start), start[1], win_start), 
+            win_end = ifelse(is.na(win_end), start[nrow(chr)], win_end),
+            win_size = win_end - win_start
+          )
+        }) %&gt;%
+        bind_rows() %&gt;%
+        GRanges()
+    }, simplify = FALSE)
+  saveRDS(DAR, DAR_path)
+} else {
+  DAR &lt;- readRDS(DAR_path)
+}</code></pre>
+<div id="dar-distribution" class="section level2">
+<h2>DAR distribution</h2>
+<p>Plotting the cumulative distribution of DAR by chromosome is useful
+to determine if the mutant chromosome is affected by high DAR values
+more so than other chromosomes.</p>
+<p>Let’s first define a plotting function so we can apply it for each
+contrast.</p>
+<pre class="r"><code>plotCumDAR &lt;- function(DAR, mutChr, title){
+  DAR %&gt;%
+    split(seqnames(.)) %&gt;%
+    lapply(function(chr){
+      tibble(
+        chromosome = as.vector(seqnames(chr)),
+        dar_smooth = chr$dar_smooth
+      )
+    }) %&gt;%
+    purrr::reduce(rbind) %&gt;%
+    mutate(
+      chromosome = factor(
+        chromosome,
+        # Draw mutant chr on top
+        levels = unique(c(
+          chromosome[chromosome != mutChr],
+          chromosome[chromosome == mutChr]
+        ))
+      ),
+      mutant_chromosome = chromosome == mutChr
+    ) %&gt;%
+    ggplot(aes(
+      x = dar_smooth,
+      group = chromosome,
+      colour = mutant_chromosome
+    )) +
+    stat_ecdf() +
+    scale_colour_manual(
+      values = c(&quot;red&quot;, &quot;grey50&quot;),
+      breaks = c(&quot;TRUE&quot;, &quot;FALSE&quot;)
+    ) +
+    labs(
+      title = title,
+      colour = &quot;Mutant chromosome&quot;,
+      x = &quot;DAR&quot;,
+      y = &quot;F(DAR)&quot;
+    )
+}</code></pre>
+<p>Now let’s see how DAR on the mutant chromosome compares to other
+chromosomes.</p>
+<pre class="r"><code>plotCumDAR(DAR$V1482Afs_het, &quot;15&quot;, &quot;V1482Afs_het vs. WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/cumDAR_V1482Afs_het-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotCumDAR(DAR$R122Pfs_het, &quot;15&quot;, &quot;R122Pfs_het vs. WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/cumDAR_R122Pfs_het-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotCumDAR(DAR$Trans, &quot;15&quot;, &quot;Trans vs. WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/cumDAR_Trans-1.png" width="768" style="display: block; margin: auto;" /></p>
+</div>
+<div id="elastic-window-ranges" class="section level2">
+<h2>Elastic window ranges</h2>
+<p>Define a <code>GRanges</code> object that contains the ranges of the
+elastic sliding window. We will use this to assign DAR values to genes
+for the range(s) they overlap.</p>
+<pre class="r"><code>winRanges &lt;- lapply(DAR, function(x){
+  x %&gt;%
+    as_tibble() %&gt;%
+    dplyr::select(
+      seqnames, start = win_start, end = win_end, width = win_size, strand,
+      dar_smooth
+    ) %&gt;%
+    split(f = .$seqnames) %&gt;%
+    ## Extend the start and ends so that the whole chromosome is covered
+    lapply(function(chr){
+      seqname &lt;- unique(chr$seqnames)
+      chr$start[1] &lt;- 1
+      chr$width[1] &lt;- chr$end[1] - chr$start[1]
+      last_ind &lt;- nrow(chr)
+      chr$end[last_ind] &lt;- chrInfo$length[chrInfo$name == seqname]
+      chr$width[last_ind] &lt;- chr$end[last_ind] - chr$start[last_ind]
+      chr
+    }) %&gt;%
+    bind_rows() %&gt;%
+    GRanges()
+})</code></pre>
+<p>Let’s define another function to visualise the distribution of
+elastic window sizes.</p>
+<pre class="r"><code>plotWinRanges &lt;- function(winRanges, title, bins = 100){
+  winRanges %&gt;%
+    width() %&gt;%
+    enframe(name = NULL, value = &quot;winSize&quot;) %&gt;%
+    ggplot(aes(winSize)) +
+    geom_histogram(
+      bins = bins,
+      colour = &quot;black&quot;,
+      fill = &quot;grey70&quot;
+    ) +
+    scale_x_log10() +
+    labs(
+      title = title,
+      x = &quot;Window size (bp)&quot;,
+      y = &quot;Count&quot;
+    )
+}</code></pre>
+<pre class="r"><code>plotWinRanges(winRanges$V1482Afs_het, &quot;V1482Afs_het vs WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/winRanges_V1482Afs_het-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotWinRanges(winRanges$R122Pfs_het, &quot;R122Pfs_het vs WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/winRanges_R122Pfs_het-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plotWinRanges(winRanges$Trans, &quot;Trans vs WT&quot;)</code></pre>
+<p><img src="dar_files/figure-html/winRanges_Trans-1.png" width="768" style="display: block; margin: auto;" /></p>
+</div>
+<div id="deg-dar-relationship" class="section level2">
+<h2>DEG-DAR relationship</h2>
+<p>We can visualise whether differentially expressed genes (DEG) may be
+prone eQTL artefacts by plotting the DAR values along a chromosomal axis
+and overlaying the position of DEGs. Let’s define a plotting function
+that we can easily use to select a chromosome and the genomic features
+of interest.</p>
+<pre class="r"><code>plotChrDAR &lt;- function(
+    DAR, chromosome, features = GRanges(), foi = GRanges(),
+    darType = &quot;b&quot;, highlight_features = TRUE,
+    title = &quot;&quot;
+){
+  tracks &lt;- list()
+  
+  if (length(foi)) {
+    foi &lt;- foi %&gt;%
+      plyranges::filter(seqnames == chromosome) %&gt;%
+      plyranges::mutate(symbol = gene_name)
+    foi_track &lt;- GeneRegionTrack(
+      range = foi,
+      transcriptAnnotation = &quot;symbol&quot;,
+      col = &quot;white&quot;,
+      fill = &quot;white&quot;,
+      showTranscriptId = TRUE,
+      fontcolor.group = &quot;red&quot;,
+      cex.group = 0.6,
+      size = 0.5,
+      name = NULL
+    )
+    tracks &lt;- append(tracks, foi_track)
+  }
+  
+  axis_track &lt;- GenomeAxisTrack(
+    add53 = TRUE,
+    add35 = TRUE,
+    name = paste0(&quot;Chr&quot;, chromosome),
+    showTitle = TRUE,
+    size = 1
+  )
+  if (length(foi)) {
+    axis_track &lt;- HighlightTrack(
+      trackList = list(axis_track),
+      range = foi
+    )
+  }
+  tracks &lt;- append(tracks, axis_track)
+  
+  if (length(features)) {
+    features &lt;- features %&gt;%
+      plyranges::filter(seqnames == chromosome) %&gt;%
+      plyranges::mutate(symbol = gene_name)
+    features_track &lt;- AnnotationTrack(
+      range = features,
+      name = &quot;DE&quot;,
+      shape = &quot;box&quot;,
+      fill = &quot;darkgray&quot;,
+      group = features$gene_name,
+      groupAnnotation = &quot;group&quot;,
+      fontcolor.group = 1,
+      cex.group = 0.6,
+      size = 0.4
+    )
+    tracks &lt;- append(tracks, features_track)
+  }
+  
+  dar_track &lt;- DAR[,&quot;dar_smooth&quot;] %&gt;%
+    plyranges::filter(seqnames == chromosome) %&gt;%
+    DataTrack(
+      type = darType,
+      name = &quot;DAR&quot;,
+      size = 8,
+      window = -1,
+      windowSize = 1,
+      cex = 0.4,
+      col = &quot;grey20&quot;,
+      col.axis = &quot;black&quot;,
+      yTicksAt = seq(0, 1, 0.1),
+      ylim = c(0, 1)
+    )
+  if (highlight_features) {
+    if (all(length(features) &amp; length(foi))) {
+      ranges &lt;- c(features, foi)
+    } else if (length(features)) {
+      ranges &lt;- features
+    } else if (length(foi)) {
+      ranges &lt;- foi
+    } else {
+      ranges &lt;- GRanges()
+    }
+    dar_track &lt;- HighlightTrack(
+      trackList = list(dar_track),
+      range = ranges,
+      col = c(rep(&quot;#ffe0e0&quot;, length(features)), rep(&quot;red&quot;, length(foi))),
+      fill = c(rep(&quot;#ffe0e0&quot;, length(features)), rep(&quot;red&quot;, length(foi)))
+    )
+  }
+  tracks &lt;- append(tracks, dar_track)
+  
+  plotTracks(
+    trackList = tracks,
+    main = title,
+    cex.main = 1,
+    cex.title = 0.6,
+    col.title = &quot;black&quot;,
+    background.title = &quot;white&quot;
+  )
+}</code></pre>
+<div id="v1482afs_het-vs-wt" class="section level3">
+<h3>V1482Afs_het vs WT</h3>
+<p>First let’s look at the mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$V1482Afs_het,
+  chromosome = &quot;15&quot;,
+  features = genes[genes$gene_id %in% deGenes$V1482Afs_het],
+  foi = genes[genes$gene_name == &quot;sorl1&quot;]
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_V1482Afs_het_mutant-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p>And comparing this to a non-mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$V1482Afs_het,
+  chromosome = &quot;3&quot;,
+  features = genes[genes$gene_id %in% deGenes$V1482Afs_het],
+  foi = genes[genes$gene_name == &quot;sorl1&quot;]
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_V1482Afs_het_non-mutant-1.png" width="768" style="display: block; margin: auto;" /></p>
+</div>
+<div id="r122pfs_het-vs-wt" class="section level3">
+<h3>R122Pfs_het vs WT</h3>
+<p>First let’s look at the mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$R122Pfs_het,
+  chromosome = &quot;15&quot;,
+  features = genes[genes$gene_id %in% deGenes$R122Pfs_het],
+  foi = genes[genes$gene_name == &quot;sorl1&quot;]
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_R122Pfs_het_mutant-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p>And comparing this to a non-mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$R122Pfs_het,
+  chromosome = &quot;3&quot;,
+  features = genes[genes$gene_id %in% deGenes$R122Pfs_het],
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_R122Pfs_het_non-mutant-1.png" width="768" style="display: block; margin: auto;" />
+### Trans vs WT</p>
+<p>First let’s look at the mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$Trans,
+  chromosome = &quot;15&quot;,
+  features = genes[genes$gene_id %in% deGenes$Trans],
+  foi = genes[genes$gene_name == &quot;sorl1&quot;]
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_Trans_mutant-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p>And comparing this to a non-mutant chromosome.</p>
+<pre class="r"><code>plotChrDAR(
+  DAR = DAR$Trans,
+  chromosome = &quot;3&quot;,
+  features = genes[genes$gene_id %in% deGenes$Trans],
+)</code></pre>
+<p><img src="dar_files/figure-html/DAR_Trans_non-mutant-1.png" width="768" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="assign-gene-dar" class="section level2">
+<h2>Assign gene DAR</h2>
+<p>Assigning each gene within the dataset a DAR value is useful for
+further analysis such as the weighting of gene rankings for GSEA. Let’s
+do this now and save the resulting <code>GRanges</code> object for
+further use.</p>
+<pre class="r"><code>assignDAR &lt;- function(features, ranges){
+  overlaps &lt;- findOverlaps(features, ranges)
+  lapply(unique(queryHits(overlaps)), function(query){
+    subjects &lt;- subjectHits(overlaps)[queryHits(overlaps) == query]
+    dar &lt;- ranges$dar_smooth[subjects] %&gt;%
+      mean()
+    features[query,] %&gt;%
+      as.data.frame() %&gt;%
+      dplyr::mutate(dar = dar)
+  }) %&gt;%
+    bind_rows() %&gt;%
+    GRanges()
+}</code></pre>
+<pre class="r"><code>## This code takes a while to execute
+## So save as Rds file for quicker processing in future
+geneDAR_path &lt;- file.path(here(&quot;files/geneDAR.Rds&quot;))
+if (!file.exists(geneDAR_path)) {
+  if (!dir.exists(dirname(geneDAR_path))) {
+    dir.create(dirname(geneDAR_path), recursive = TRUE)
+  }
+  geneDAR &lt;- map2(topTables, winRanges, function(tt, wr){
+    features &lt;- genes[genes$gene_id %in% tt$gene_id]
+    assignDAR(features, wr)
+  })
+  saveRDS(geneDAR, geneDAR_path)
+} else {
+  geneDAR &lt;- readRDS(geneDAR_path)
+}</code></pre>
+</div>
+</div>
+<div id="session-info" class="section level1">
+<h1>Session Info</h1>
+<pre class="r"><code>sessionInfo() %&gt;%
+  pander()</code></pre>
+<p><strong>R version 4.2.3 (2023-03-15)</strong></p>
+<p><strong>Platform:</strong> x86_64-pc-linux-gnu (64-bit)</p>
+<p><strong>locale:</strong> <em>LC_CTYPE=en_AU.UTF-8</em>,
+<em>LC_NUMERIC=C</em>, <em>LC_TIME=en_AU.UTF-8</em>,
+<em>LC_COLLATE=en_AU.UTF-8</em>, <em>LC_MONETARY=en_AU.UTF-8</em>,
+<em>LC_MESSAGES=en_AU.UTF-8</em>, <em>LC_PAPER=en_AU.UTF-8</em>,
+<em>LC_NAME=C</em>, <em>LC_ADDRESS=C</em>, <em>LC_TELEPHONE=C</em>,
+<em>LC_MEASUREMENT=en_AU.UTF-8</em> and <em>LC_IDENTIFICATION=C</em></p>
+<p><strong>attached base packages:</strong> <em>grid</em>,
+<em>stats4</em>, <em>stats</em>, <em>graphics</em>, <em>grDevices</em>,
+<em>utils</em>, <em>datasets</em>, <em>methods</em> and
+<em>base</em></p>
+<p><strong>other attached packages:</strong>
+<em>ensembldb(v.2.22.0)</em>, <em>AnnotationFilter(v.1.22.0)</em>,
+<em>GenomicFeatures(v.1.50.4)</em>, <em>AnnotationDbi(v.1.60.0)</em>,
+<em>limma(v.3.54.1)</em>, <em>readxl(v.1.4.2)</em>,
+<em>msigdbr(v.7.5.1)</em>, <em>zoo(v.1.8-11)</em>,
+<em>Gviz(v.1.42.1)</em>, <em>VariantAnnotation(v.1.44.1)</em>,
+<em>Rsamtools(v.2.14.0)</em>, <em>Biostrings(v.2.66.0)</em>,
+<em>XVector(v.0.38.0)</em>, <em>SummarizedExperiment(v.1.28.0)</em>,
+<em>Biobase(v.2.58.0)</em>, <em>GenomicRanges(v.1.50.2)</em>,
+<em>GenomeInfoDb(v.1.34.9)</em>, <em>IRanges(v.2.32.0)</em>,
+<em>S4Vectors(v.0.36.1)</em>, <em>MatrixGenerics(v.1.10.0)</em>,
+<em>matrixStats(v.0.63.0)</em>, <em>viridis(v.0.6.2)</em>,
+<em>viridisLite(v.0.4.1)</em>, <em>rmarkdown(v.2.20)</em>,
+<em>pander(v.0.6.5)</em>, <em>ggpubr(v.0.6.0)</em>,
+<em>RColorBrewer(v.1.1-3)</em>, <em>ggrepel(v.0.9.3)</em>,
+<em>kableExtra(v.1.3.4)</em>, <em>scales(v.1.2.1)</em>,
+<em>AnnotationHub(v.3.6.0)</em>, <em>BiocFileCache(v.2.6.1)</em>,
+<em>dbplyr(v.2.3.0)</em>, <em>BiocGenerics(v.0.44.0)</em>,
+<em>magrittr(v.2.0.3)</em>, <em>lubridate(v.1.9.2)</em>,
+<em>forcats(v.1.0.0)</em>, <em>stringr(v.1.5.0)</em>,
+<em>dplyr(v.1.1.0)</em>, <em>purrr(v.1.0.1)</em>,
+<em>readr(v.2.1.4)</em>, <em>tidyr(v.1.3.0)</em>,
+<em>tibble(v.3.1.8)</em>, <em>ggplot2(v.3.4.1)</em>,
+<em>tidyverse(v.2.0.0)</em> and <em>here(v.1.0.1)</em></p>
+<p><strong>loaded via a namespace (and not attached):</strong>
+<em>utf8(v.1.2.3)</em>, <em>tidyselect(v.1.2.0)</em>,
+<em>RSQLite(v.2.3.0)</em>, <em>htmlwidgets(v.1.6.1)</em>,
+<em>BiocParallel(v.1.32.5)</em>, <em>munsell(v.0.5.0)</em>,
+<em>codetools(v.0.2-19)</em>, <em>interp(v.1.1-3)</em>,
+<em>withr(v.2.5.0)</em>, <em>colorspace(v.2.1-0)</em>,
+<em>filelock(v.1.0.2)</em>, <em>highr(v.0.10)</em>,
+<em>knitr(v.1.42)</em>, <em>rstudioapi(v.0.14)</em>,
+<em>ggsignif(v.0.6.4)</em>, <em>labeling(v.0.4.2)</em>,
+<em>GenomeInfoDbData(v.1.2.9)</em>, <em>farver(v.2.1.1)</em>,
+<em>bit64(v.4.0.5)</em>, <em>rprojroot(v.2.0.3)</em>,
+<em>vctrs(v.0.5.2)</em>, <em>generics(v.0.1.3)</em>,
+<em>xfun(v.0.37)</em>, <em>biovizBase(v.1.46.0)</em>,
+<em>timechange(v.0.2.0)</em>, <em>R6(v.2.5.1)</em>,
+<em>bitops(v.1.0-7)</em>, <em>cachem(v.1.0.6)</em>,
+<em>DelayedArray(v.0.24.0)</em>, <em>assertthat(v.0.2.1)</em>,
+<em>vroom(v.1.6.1)</em>, <em>promises(v.1.2.0.1)</em>,
+<em>BiocIO(v.1.8.0)</em>, <em>nnet(v.7.3-18)</em>,
+<em>gtable(v.0.3.1)</em>, <em>rlang(v.1.0.6)</em>,
+<em>systemfonts(v.1.0.4)</em>, <em>splines(v.4.2.3)</em>,
+<em>rtracklayer(v.1.58.0)</em>, <em>rstatix(v.0.7.2)</em>,
+<em>lazyeval(v.0.2.2)</em>, <em>dichromat(v.2.0-0.1)</em>,
+<em>plyranges(v.1.18.0)</em>, <em>broom(v.1.0.3)</em>,
+<em>checkmate(v.2.1.0)</em>, <em>BiocManager(v.1.30.20)</em>,
+<em>yaml(v.2.3.7)</em>, <em>abind(v.1.4-5)</em>,
+<em>backports(v.1.4.1)</em>, <em>httpuv(v.1.6.9)</em>,
+<em>Hmisc(v.4.8-0)</em>, <em>tools(v.4.2.3)</em>,
+<em>ellipsis(v.0.3.2)</em>, <em>jquerylib(v.0.1.4)</em>,
+<em>Rcpp(v.1.0.10)</em>, <em>base64enc(v.0.1-3)</em>,
+<em>progress(v.1.2.2)</em>, <em>zlibbioc(v.1.44.0)</em>,
+<em>RCurl(v.1.98-1.10)</em>, <em>prettyunits(v.1.1.1)</em>,
+<em>rpart(v.4.1.19)</em>, <em>deldir(v.1.0-6)</em>,
+<em>cluster(v.2.1.4)</em>, <em>data.table(v.1.14.8)</em>,
+<em>ProtGenerics(v.1.30.0)</em>, <em>hms(v.1.1.2)</em>,
+<em>mime(v.0.12)</em>, <em>evaluate(v.0.20)</em>,
+<em>xtable(v.1.8-4)</em>, <em>XML(v.3.99-0.13)</em>,
+<em>jpeg(v.0.1-10)</em>, <em>gridExtra(v.2.3)</em>,
+<em>compiler(v.4.2.3)</em>, <em>biomaRt(v.2.54.0)</em>,
+<em>crayon(v.1.5.2)</em>, <em>htmltools(v.0.5.4)</em>,
+<em>later(v.1.3.0)</em>, <em>tzdb(v.0.3.0)</em>,
+<em>Formula(v.1.2-4)</em>, <em>DBI(v.1.1.3)</em>,
+<em>rappdirs(v.0.3.3)</em>, <em>babelgene(v.22.9)</em>,
+<em>Matrix(v.1.5-3)</em>, <em>car(v.3.1-1)</em>, <em>cli(v.3.6.0)</em>,
+<em>parallel(v.4.2.3)</em>, <em>pkgconfig(v.2.0.3)</em>,
+<em>GenomicAlignments(v.1.34.0)</em>, <em>foreign(v.0.8-84)</em>,
+<em>xml2(v.1.3.3)</em>, <em>svglite(v.2.1.1)</em>,
+<em>bslib(v.0.4.2)</em>, <em>webshot(v.0.5.4)</em>,
+<em>rvest(v.1.0.3)</em>, <em>digest(v.0.6.31)</em>,
+<em>cellranger(v.1.1.0)</em>, <em>htmlTable(v.2.4.1)</em>,
+<em>restfulr(v.0.0.15)</em>, <em>curl(v.5.0.0)</em>,
+<em>shiny(v.1.7.4)</em>, <em>rjson(v.0.2.21)</em>,
+<em>lifecycle(v.1.0.3)</em>, <em>jsonlite(v.1.8.4)</em>,
+<em>carData(v.3.0-5)</em>, <em>BSgenome(v.1.66.3)</em>,
+<em>fansi(v.1.0.4)</em>, <em>pillar(v.1.8.1)</em>,
+<em>lattice(v.0.20-45)</em>, <em>KEGGREST(v.1.38.0)</em>,
+<em>fastmap(v.1.1.0)</em>, <em>httr(v.1.4.4)</em>,
+<em>survival(v.3.5-5)</em>, <em>interactiveDisplayBase(v.1.36.0)</em>,
+<em>glue(v.1.6.2)</em>, <em>png(v.0.1-8)</em>,
+<em>BiocVersion(v.3.16.0)</em>, <em>bit(v.4.0.5)</em>,
+<em>stringi(v.1.7.12)</em>, <em>sass(v.0.4.5)</em>,
+<em>blob(v.1.2.3)</em>, <em>latticeExtra(v.0.6-30)</em> and
+<em>memoise(v.2.0.1)</em></p>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3,h4",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

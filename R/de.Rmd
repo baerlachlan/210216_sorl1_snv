@@ -100,7 +100,8 @@ primary_chrs <- c(
 transcripts <- transcripts(ensDb, filter = SeqNameFilter(primary_chrs))
 txLen <- exonsBy(ensDb, "tx", filter = SeqNameFilter(primary_chrs)) %>%
   width() %>%
-  vapply(sum, integer(1)) %>%
+  lapply(sum) %>%
+  unlist(use.names = TRUE) %>%
   enframe(name = "tx_id", value = "length")
 mcols(transcripts) <- mcols(transcripts)[
   c("tx_id", "gene_id", "gc_content")

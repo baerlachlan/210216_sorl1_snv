@@ -94,12 +94,14 @@ primary_chrs <- chrInfo$name
 transcripts <- transcripts(ensDb, filter = SeqNameFilter(primary_chrs))
 txLen <- exonsBy(ensDb, "tx", filter = SeqNameFilter(primary_chrs)) %>%
   width() %>%
-  vapply(sum, integer(1))
+  lapply(sum) %>%
+  unlist(use.names = TRUE) %>%
+  enframe(name = "tx_id", value = "length")
 mcols(transcripts) <- mcols(transcripts)[
   c("tx_id", "gene_id", "gc_content")
 ] %>%
   as.data.frame() %>%
-  mutate(length = txLen)
+  left_join(txLen)
 ```
 
 ```{r geneGc}
@@ -215,10 +217,14 @@ deGenes <- lapply(topTables, function(tt){
 })
 ```
 
-## masterGR
+## geneDAR
 
 ```{r}
-masterGR <- readRDS(here("files/masterGR.Rds"))
+geneDAR <- readRDS(here("files/geneDAR.Rds")) %>%
+  map2(topTables, function(x, y){
+    left_join(as_tibble(x), y[c("gene_id", "logFC", "PValue", "DE")]) %>%
+      GRanges()
+  })
 ```
 
 # Gene sets
@@ -326,16 +332,16 @@ tagList({
 
 ### With DAR threshold
 
-Check if removing genes below a diversity threshold still shows an enrichment.
+Check if removing genes below a dar threshold still shows an enrichment.
 
 ```{r}
 threshold <- 0.3
 ```
 
 ```{r}
-byChrThresh_fisher <- sapply(masterGR, function(gr){
+byChrThresh_fisher <- sapply(geneDAR, function(gr){
   tbl <- as_tibble(gr) %>%
-    dplyr::filter(diversity <= threshold) %>%
+    dplyr::filter(dar <= threshold) %>%
     mutate(chromosome = as.vector(seqnames))
   # Check for DE genes
   if (sum(tbl$DE)) {
@@ -379,209 +385,6 @@ tagList({
 })
 ```
 
-Since we still have a significant enrichment for DE genes on the mutant chromosome, let's check the gene sets they belong to and see if they make sense.
-
-```{r}
-genesPassed <- as_tibble(masterGR[[1]]) %>%
-  mutate(seqnames = as.factor(seqnames)) %>%
-  dplyr::filter(
-    seqnames == "24",
-    DE,
-    diversity <= threshold
-  ) %>%
-  .$gene_id
-```
-
-```{r}
-hmByGene[names(hmByGene) %in% genesPassed]
-kgByGene[names(kgByGene) %in% genesPassed]
-wkByGene[names(wkByGene) %in% genesPassed]
-```
-
-Only one gene is present in any of the gene sets, and it does not appear to have an expected relevance to MPS.
-
-## Regional clustering {.tabset .tabset-pills}
-
-```{r}
-region_size <- 1e6
-```
-
-### Forward
-
-```{r}
-regionsFwd <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
-  length <- chrInfo$length[chrInfo$name == chr]
-  starts <- seq(1, length, by = region_size)
-  # Remove last start as this is actually an end
-  starts <- starts[-length(starts)]
-  lapply(starts, function(start){
-    GRanges(
-      seqnames = chr,
-      ranges = IRanges(start = start, end = (start + region_size - 1))
-    )
-  }) %>%
-    set_names(paste0(
-      "chr",
-      chr,
-      ":",
-      starts, "-" ,
-      formatC(starts + region_size - 1, format = "d")
-    ))
-}, simplify = FALSE) %>%
-  .[as.character(sort(as.numeric(names(.)), ))] %>%
-  flatten()
-```
-
-```{r}
-regionsFwd_genes <- sapply(regionsFwd, function(region){
-  subsetByOverlaps(genes, region)$gene_id
-}, simplify = FALSE)
-```
-
-```{r}
-regionsFwd_fisher <- sapply(topTables, function(tt){
-  # Check for DE genes
-  if (sum(tt$DE)) {
-    sapply(regionsFwd_genes, function(regionGenes){
-      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
-      # Avoid error if no genes in region
-      if (sum(tt$inRegion) > 0) {
-        table(
-          tt$DE,
-          tt$inRegion
-        ) %>%
-          fisher.test()
-      }
-    }, simplify = FALSE)
-  }
-}, simplify = FALSE)
-```
-
-```{r}
-regionsFwd_pvals <- sapply(regionsFwd_fisher, function(geno){
-  sapply(geno, function(fisherRes){
-    if (length(fisherRes)) {
-      fisherRes$p.value
-    } else {
-      return(1)
-    }
-  }, simplify = FALSE) %>%
-    unlist() %>%
-    enframe(name = "region", value = "p") %>%
-    mutate(
-      bonf = p.adjust(p, method = "bonf"),
-      sig = bonf < 0.05,
-      p = formatC(p, format = "e", digits = 2),
-      bonf = formatC(bonf, format = "e", digits = 2),
-    ) %>%
-    dplyr::filter(sig)
-}, simplify = FALSE)
-```
-
-```{r}
-tagList({
-  lapply(seq_along(regionsFwd_pvals), function(i, tbl, name){
-    lbSimpleDT(
-      tbl = tbl[[i]],
-      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
-    )
-  }, tbl = regionsFwd_pvals, name = names(regionsFwd_pvals))
-})
-```
-
-```{r}
-genes[genes$gene_name == "sorl1"]
-```
-
-### Reverse
-
-```{r}
-regionsRvs <- sapply(chrInfo$name[chrInfo$name != "MT"], function(chr){
-  length <- chrInfo$length[chrInfo$name == chr]
-  starts <- seq(length, 1, by = -region_size)
-  # Reverse starts as GRanges won't handle regions with start > end
-  starts <- rev(starts)
-  # Remove last start as this is actually an end
-  starts <- starts[-length(starts)]
-  lapply(starts, function(start){
-    GRanges(
-      seqnames = chr,
-      ranges = IRanges(start = start, end = (start + region_size - 1))
-    )
-  }) %>%
-    set_names(paste0(
-      "chr",
-      chr,
-      ":",
-      starts, "-" ,
-      formatC(starts + region_size - 1, format = "d")
-    ))
-}, simplify = FALSE) %>%
-  .[as.character(sort(as.numeric(names(.)), ))] %>%
-  flatten()
-```
-
-```{r}
-regionsRvs_genes <- sapply(regionsRvs, function(region){
-  subsetByOverlaps(genes, region)$gene_id
-}, simplify = FALSE)
-```
-
-```{r}
-regionsRvs_fisher <- sapply(topTables, function(tt){
-  # Check for DE genes
-  if (sum(tt$DE)) {
-    sapply(regionsFwd_genes, function(regionGenes){
-      tt <- mutate(tt, inRegion = gene_id %in% regionGenes)
-      # Avoid error if no genes in region
-      if (sum(tt$inRegion) > 0) {
-        table(
-          tt$DE,
-          tt$inRegion
-        ) %>%
-          fisher.test()
-      }
-    }, simplify = FALSE)
-  }
-}, simplify = FALSE)
-```
-
-```{r}
-regionsRvs_pvals <- sapply(regionsRvs_fisher, function(geno){
-  sapply(geno, function(fisherRes){
-    if (length(fisherRes)) {
-      fisherRes$p.value
-    } else {
-      return(1)
-    }
-  }, simplify = FALSE) %>%
-    unlist() %>%
-    enframe(name = "region", value = "p") %>%
-    mutate(
-      bonf = p.adjust(p, method = "bonf"),
-      sig = bonf < 0.05,
-      p = formatC(p, format = "e", digits = 2),
-      bonf = formatC(bonf, format = "e", digits = 2),
-    ) %>%
-    dplyr::filter(sig)
-}, simplify = FALSE)
-```
-
-```{r}
-tagList({
-  lapply(seq_along(regionsRvs_pvals), function(i, tbl, name){
-    lbSimpleDT(
-      tbl = tbl[[i]],
-      cap = paste0("Table ", i, ": Genotype - ", name[[i]])
-    )
-  }, tbl = regionsRvs_pvals, name = names(regionsRvs_pvals))
-})
-```
-
-```{r}
-genes[genes$gene_name == "sorl1"]
-```
-
 # Enrichment testing {.tabset}
 
 ```{r}
@@ -590,8 +393,8 @@ thresholds <- seq(0.1, 1.0, 0.1)
 
 ```{r}
 threshOutcomes <- sapply(colnames(contrasts), function(cont){
-  topT_div <- as_tibble(masterGR[[cont]]) %>%
-    dplyr::select(gene_id, diversity) %>%
+  topT_div <- as_tibble(geneDAR[[cont]]) %>%
+    dplyr::select(gene_id, dar) %>%
     left_join(topTables[[cont]])
   n_DE <- topT_div %>%
     dplyr::filter(DE) %>%
@@ -601,7 +404,7 @@ threshOutcomes <- sapply(colnames(contrasts), function(cont){
     nrow()
   lapply(thresholds, function(threshVal){
     topT_div %>%
-      dplyr::filter(diversity > threshVal) %>%
+      dplyr::filter(dar > threshVal) %>%
       summarise(
         DE_count = sum(DE),
         DE_prop = DE_count / n_DE,
@@ -639,7 +442,7 @@ threshPlots_de <- lapply(threshOutcomes, function(x){
     scale_fill_manual(values = c("grey", "black"), labels = c("DE", "Not DE")) +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off", xlim = c(0.1,1)) +
-    labs(y = "Proportion of\ngenes removed", x = "Diversity threshold") +
+    labs(y = "Proportion of\ngenes removed", x = "dar threshold") +
     theme(
       legend.position = c(1.05, 0.5),
       legend.title = element_blank(),
@@ -658,9 +461,9 @@ threshPlots_de <- lapply(threshOutcomes, function(x){
 hm_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       cpm(
         dgeList$counts[genes_passed,],
@@ -676,7 +479,7 @@ hm_fry_eqtl <- colnames(contrasts) %>%
         rownames_to_column("Pathway") %>%
         as_tibble() %>%
         mutate(
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           sig = FDR < 0.05 | FDR.Mixed < 0.05
         )
@@ -710,13 +513,13 @@ rankPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -741,7 +544,7 @@ rankPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = hm_cols, na.value="white") +
     scale_colour_manual(values = hm_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -778,13 +581,13 @@ pPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(PValue.Mixed),
       group = Pathway,
       colour = Pathway,
@@ -796,7 +599,7 @@ pPlots_hm_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = hm_cols) +
     scale_fill_manual(values = hm_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -868,9 +671,9 @@ lapply(seq_along(pPlots_hm_fry), function(i, pPlot, sig){
 kg_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       cpm(
         dgeList$counts[genes_passed,],
@@ -886,7 +689,7 @@ kg_fry_eqtl <- colnames(contrasts) %>%
         rownames_to_column("Pathway") %>%
         as_tibble() %>%
         mutate(
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           sig = FDR.Mixed < 0.05
         )
@@ -920,13 +723,13 @@ rankPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -951,7 +754,7 @@ rankPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = kg_cols, na.value="white") +
     scale_colour_manual(values = kg_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -988,13 +791,13 @@ pPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(PValue.Mixed),
       group = Pathway,
       colour = Pathway,
@@ -1006,7 +809,7 @@ pPlots_kg_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = kg_cols) +
     scale_fill_manual(values = kg_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -1078,9 +881,9 @@ lapply(seq_along(pPlots_kg_fry), function(i, pPlot, sig){
 wk_fry_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       cpm(
         dgeList$counts[genes_passed,],
@@ -1096,7 +899,7 @@ wk_fry_eqtl <- colnames(contrasts) %>%
         rownames_to_column("Pathway") %>%
         as_tibble() %>%
         mutate(
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           sig = FDR.Mixed < 0.05
         )
@@ -1130,13 +933,13 @@ rankPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -1161,7 +964,7 @@ rankPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = wk_cols, na.value="white") +
     scale_colour_manual(values = wk_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -1198,13 +1001,13 @@ pPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(PValue.Mixed),
       group = Pathway,
       colour = Pathway,
@@ -1216,7 +1019,7 @@ pPlots_wk_fry <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = wk_cols) +
     scale_fill_manual(values = wk_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -1309,9 +1112,9 @@ set.seed(220615)
 hm_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       fgseaMultilevel(hmByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
         as_tibble() %>%
@@ -1324,7 +1127,7 @@ hm_gsea_eqtl <- colnames(contrasts) %>%
             sign(ES) == -1 ~ "Down",
             sign(ES) == 0 ~ "None"
           ),
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           bonf.p.adj = p.adjust(pval, "bonferroni"),
           sig = bonf.p.adj < 0.05
@@ -1359,13 +1162,13 @@ rankPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -1390,7 +1193,7 @@ rankPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = hm_cols, na.value="white") +
     scale_colour_manual(values = hm_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -1427,13 +1230,13 @@ pPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(pval),
       group = Pathway,
       colour = Pathway,
@@ -1445,7 +1248,7 @@ pPlots_hm_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = hm_cols) +
     scale_fill_manual(values = hm_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -1516,9 +1319,9 @@ set.seed(220615)
 kg_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       fgseaMultilevel(kgByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
         as_tibble() %>%
@@ -1531,7 +1334,7 @@ kg_gsea_eqtl <- colnames(contrasts) %>%
             sign(ES) == -1 ~ "Down",
             sign(ES) == 0 ~ "None"
           ),
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           bonf.p.adj = p.adjust(pval, "bonferroni"),
           sig = bonf.p.adj < 0.05
@@ -1566,13 +1369,13 @@ rankPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -1597,7 +1400,7 @@ rankPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = kg_cols, na.value="white") +
     scale_colour_manual(values = kg_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -1634,13 +1437,13 @@ pPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(pval),
       group = Pathway,
       colour = Pathway,
@@ -1652,7 +1455,7 @@ pPlots_kg_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = kg_cols) +
     scale_fill_manual(values = kg_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -1723,9 +1526,9 @@ set.seed(220615)
 wk_gsea_eqtl <- colnames(contrasts) %>%
   sapply(function(cont){
     lapply(thresholds, function(threshVal){
-      genes_passed <- masterGR[[cont]] %>%
+      genes_passed <- geneDAR[[cont]] %>%
         as_tibble() %>%
-        dplyr::filter(diversity <= threshVal) %>%
+        dplyr::filter(dar <= threshVal) %>%
         pull(gene_id)
       fgseaMultilevel(wkByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
         as_tibble() %>%
@@ -1738,7 +1541,7 @@ wk_gsea_eqtl <- colnames(contrasts) %>%
             sign(ES) == -1 ~ "Down",
             sign(ES) == 0 ~ "None"
           ),
-          diversity_threshold = threshVal,
+          dar_threshold = threshVal,
           rank = row_number(),
           bonf.p.adj = p.adjust(pval, "bonferroni"),
           sig = bonf.p.adj < 0.05
@@ -1773,13 +1576,13 @@ rankPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       rel_rank,
       group = Pathway,
       colour = Pathway,
@@ -1804,7 +1607,7 @@ rankPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_fill_manual(values = wk_cols, na.value="white") +
     scale_colour_manual(values = wk_cols) +
-    labs(x = "Diversity score cut-off", y = "\nRelative rank") +
+    labs(x = "dar score cut-off", y = "\nRelative rank") +
     theme(plot.margin = margin(0, 5, 0, 0, unit = "cm")) +
     coord_cartesian(clip = "off") +
     theme(
@@ -1841,13 +1644,13 @@ pPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
     bind_rows() %>%
     mutate(
       label = ifelse(
-        diversity_threshold == 1,
+        dar_threshold == 1,
         str_trunc(Pathway, width = 30),
         NA
       )
     ) %>%
     ggplot(aes(
-      diversity_threshold,
+      dar_threshold,
       -log10(pval),
       group = Pathway,
       colour = Pathway,
@@ -1859,7 +1662,7 @@ pPlots_wk_gsea <- sapply(colnames(contrasts), function(cont){
     scale_x_continuous(breaks = thresholds) +
     scale_colour_manual(values = wk_cols) +
     scale_fill_manual(values = wk_cols, na.value="white") +
-    labs(x = "Diversity threshold", y = log10plab) +
+    labs(x = "dar threshold", y = log10plab) +
     facet_wrap(~Pathway, ncol = 2) +
     theme(
       legend.position = "none",
@@ -1926,10 +1729,10 @@ lapply(seq_along(pPlots_wk_gsea), function(i, pPlot, sig){
 # Weighting the ranked list {.tabset}
 
 ```{r}
-ranks_d_dar <- lapply(masterGR, function(x){
+ranks_d_dar <- lapply(geneDAR, function(x){
   x %>%
     as_tibble() %>%
-    mutate(stat = (-log10(PValue) * sign(logFC)) * (1 - diversity)) %>%
+    mutate(stat = (-log10(PValue) * sign(logFC)) * (1 - dar)) %>%
     dplyr::arrange(desc(stat)) %>%
     with(structure(stat, names = gene_id))
 })
@@ -1954,7 +1757,7 @@ map2(ranks_d, ranks_d_dar, function(before, after){
 set.seed(220615)
 hm_gsea_dar <- colnames(contrasts) %>%
   sapply(function(cont){
-    genes_passed <- masterGR[[cont]] %>%
+    genes_passed <- geneDAR[[cont]] %>%
       as_tibble() %>%
       pull(gene_id)
     fgseaMultilevel(hmByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
@@ -2021,7 +1824,7 @@ tagList({
 set.seed(220615)
 kg_gsea_dar <- colnames(contrasts) %>%
   sapply(function(cont){
-    genes_passed <- masterGR[[cont]] %>%
+    genes_passed <- geneDAR[[cont]] %>%
       as_tibble() %>%
       pull(gene_id)
     fgseaMultilevel(kgByID, ranks_d[[cont]][genes_passed], eps = 0) %>%
@@ -2088,7 +1891,7 @@ tagList({
 set.seed(220615)
 wk_gsea_dar <- colnames(contrasts) %>%
   sapply(function(cont){
-    genes_passed <- masterGR[[cont]] %>%
+    genes_passed <- geneDAR[[cont]] %>%
       as_tibble() %>%
       pull(gene_id)
     fgseaMultilevel(wkByID, ranks_d[[cont]][genes_passed], eps = 0) %>%

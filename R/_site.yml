@@ -1,13 +1,16 @@
 name: "210216_sorl1_snv"
 output_dir: ../docs
-exclude: []
 navbar:
-  title: "210408_psen1_fADfAI_snv"
+  title: "210216_sorl1_snv"
   left:
     - text: Home
       href: index.html
-    - text: ASE QC
-      href: ase_qc.html
+    - text: DE
+      href: de.html
+    - text: DAR
+      href: dar.html
+    - text: Enrichment
+      href: enrichment.html
   right:
     - icon: fa-github
       href: https://github.com/baerlachlan/210216_sorl1_snv

@@ -14,7 +14,7 @@
 
 <title>Differential Gene Expression Analysis</title>
 
-<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.20/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/flatly.min.css" rel="stylesheet" />
@@ -150,11 +150,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -183,8 +187,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -192,16 +196,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -326,7 +323,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">210408_psen1_fADfAI_snv</a>
+      <a class="navbar-brand" href="index.html">210216_sorl1_snv</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -334,7 +331,13 @@ div.tocify {
   <a href="index.html">Home</a>
 </li>
 <li>
-  <a href="ase_qc.html">ASE QC</a>
+  <a href="de.html">DE</a>
+</li>
+<li>
+  <a href="dar.html">DAR</a>
+</li>
+<li>
+  <a href="enrichment.html">Enrichment</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -362,8 +365,9 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Differential Gene Expression Analysis</h1>
+<h3 class="subtitle">210216_sorl1_snv dataset</h3>
 <h4 class="author">Lachlan Baer</h4>
-<h4 class="date">14 September, 2022</h4>
+<h4 class="date">24 March, 2023</h4>
 
 </div>
 
@@ -422,7 +426,8 @@ primary_chrs &lt;- c(
 <pre class="r"><code>transcripts &lt;- transcripts(ensDb, filter = SeqNameFilter(primary_chrs))
 txLen &lt;- exonsBy(ensDb, &quot;tx&quot;, filter = SeqNameFilter(primary_chrs)) %&gt;%
   width() %&gt;%
-  vapply(sum, integer(1)) %&gt;%
+  lapply(sum) %&gt;%
+  unlist(use.names = TRUE) %&gt;%
   enframe(name = &quot;tx_id&quot;, value = &quot;length&quot;)
 mcols(transcripts) &lt;- mcols(transcripts)[
   c(&quot;tx_id&quot;, &quot;gene_id&quot;, &quot;gc_content&quot;)
@@ -618,9 +623,7 @@ the coefficients are equal to 0. Due to the subtle effects of the
 mutation outlined in the PCA, genes were considered to be DE if they had
 an FDR-adjusted p-value &lt; 0.05, as opposed to more stringent error
 rate controls such as the Bonferroni method.</p>
-<pre class="r"><code>alpha &lt;- 0.05
-minLfc &lt;- 1
-fit &lt;- estimateDisp(dgeList, design) %&gt;%
+<pre class="r"><code>fit &lt;- estimateDisp(dgeList, design) %&gt;%
   glmFit()
 topTables &lt;- colnames(design)[2:4] %&gt;%
   sapply(function(x){
@@ -1363,7 +1366,7 @@ pcaVars &lt;- percent_format(0.1)(summary(pca_cqn)$importance[&quot;Proportion o
 </p>
 </div>
 <p>There was very little improvement in separation of genotype groups
-after CQN, and PC1 still only accounted for 43.7% of the variation. The
+after CQN, and PC1 still only accounted for 43.8% of the variation. The
 x-axis of the PCA plot appears to be flipped, but this normal as the
 signs of PC values are somewhat arbitrary.</p>
 </div>
@@ -1455,19 +1458,19 @@ cox7a1
 15
 </td>
 <td style="text-align:left;">
--2.43
+-2.42
 </td>
 <td style="text-align:left;">
 1.02
 </td>
 <td style="text-align:left;">
-9.20e-13
+8.32e-13
 </td>
 <td style="text-align:left;">
-1.59e-08
+1.44e-08
 </td>
 <td style="text-align:left;">
-1.59e-08
+1.44e-08
 </td>
 </tr>
 <tr>
@@ -1487,13 +1490,13 @@ CR318588.1
 2.13
 </td>
 <td style="text-align:left;">
-4.06e-08
+4.03e-08
 </td>
 <td style="text-align:left;">
-3.50e-04
+3.48e-04
 </td>
 <td style="text-align:left;">
-7.01e-04
+6.95e-04
 </td>
 </tr>
 </tbody>
@@ -1563,19 +1566,19 @@ clca1
 15
 </td>
 <td style="text-align:left;">
--7.05
+-7.02
 </td>
 <td style="text-align:left;">
 4.14
 </td>
 <td style="text-align:left;">
-4.11e-16
+4.36e-16
 </td>
 <td style="text-align:left;">
-7.09e-12
+7.52e-12
 </td>
 <td style="text-align:left;">
-7.09e-12
+7.52e-12
 </td>
 </tr>
 <tr>
@@ -1595,13 +1598,13 @@ plin2
 2.60
 </td>
 <td style="text-align:left;">
-1.74e-09
+1.70e-09
 </td>
 <td style="text-align:left;">
-1.50e-05
+1.47e-05
 </td>
 <td style="text-align:left;">
-3.00e-05
+2.93e-05
 </td>
 </tr>
 <tr>
@@ -1615,19 +1618,19 @@ BX663519.1
 15
 </td>
 <td style="text-align:left;">
--2.98
+-2.96
 </td>
 <td style="text-align:left;">
 1.19
 </td>
 <td style="text-align:left;">
-2.27e-08
+2.47e-08
 </td>
 <td style="text-align:left;">
-1.30e-04
+1.42e-04
 </td>
 <td style="text-align:left;">
-3.91e-04
+4.26e-04
 </td>
 </tr>
 <tr>
@@ -1647,13 +1650,13 @@ cuedc1b
 3.63
 </td>
 <td style="text-align:left;">
-1.80e-07
+1.81e-07
 </td>
 <td style="text-align:left;">
-7.78e-04
+7.82e-04
 </td>
 <td style="text-align:left;">
-3.11e-03
+3.13e-03
 </td>
 </tr>
 </tbody>
@@ -1729,13 +1732,13 @@ cuedc1b
 3.63
 </td>
 <td style="text-align:left;">
-1.88e-08
+1.90e-08
 </td>
 <td style="text-align:left;">
-3.25e-04
+3.28e-04
 </td>
 <td style="text-align:left;">
-3.25e-04
+3.28e-04
 </td>
 </tr>
 <tr>
@@ -1755,13 +1758,13 @@ sorl1
 6.17
 </td>
 <td style="text-align:left;">
-6.86e-08
+7.16e-08
 </td>
 <td style="text-align:left;">
-5.92e-04
+6.17e-04
 </td>
 <td style="text-align:left;">
-1.18e-03
+1.23e-03
 </td>
 </tr>
 <tr>
@@ -1781,13 +1784,13 @@ dnase2
 1.83
 </td>
 <td style="text-align:left;">
-2.25e-07
+2.28e-07
 </td>
 <td style="text-align:left;">
-1.29e-03
+1.31e-03
 </td>
 <td style="text-align:left;">
-3.87e-03
+3.93e-03
 </td>
 </tr>
 <tr>
@@ -1801,19 +1804,19 @@ cox7a1
 15
 </td>
 <td style="text-align:left;">
--1.64
+-1.63
 </td>
 <td style="text-align:left;">
 1.02
 </td>
 <td style="text-align:left;">
-5.66e-07
+5.38e-07
 </td>
 <td style="text-align:left;">
-2.44e-03
+2.32e-03
 </td>
 <td style="text-align:left;">
-9.76e-03
+9.29e-03
 </td>
 </tr>
 <tr>
@@ -1833,13 +1836,13 @@ rab4b
 3.05
 </td>
 <td style="text-align:left;">
-8.03e-07
+8.32e-07
 </td>
 <td style="text-align:left;">
-2.77e-03
+2.87e-03
 </td>
 <td style="text-align:left;">
-1.39e-02
+1.44e-02
 </td>
 </tr>
 <tr>
@@ -1859,13 +1862,13 @@ chrna10a
 1.41
 </td>
 <td style="text-align:left;">
-2.05e-06
+2.08e-06
 </td>
 <td style="text-align:left;">
-5.88e-03
+5.99e-03
 </td>
 <td style="text-align:left;">
-3.53e-02
+3.59e-02
 </td>
 </tr>
 <tr>
@@ -1885,13 +1888,13 @@ BX322555.3
 3.26
 </td>
 <td style="text-align:left;">
-5.57e-06
+5.71e-06
 </td>
 <td style="text-align:left;">
-1.37e-02
+1.41e-02
 </td>
 <td style="text-align:left;">
-9.61e-02
+9.85e-02
 </td>
 </tr>
 <tr>
@@ -1911,13 +1914,13 @@ ftr91
 -0.25
 </td>
 <td style="text-align:left;">
-8.16e-06
+8.43e-06
 </td>
 <td style="text-align:left;">
-1.76e-02
+1.82e-02
 </td>
 <td style="text-align:left;">
-1.41e-01
+1.45e-01
 </td>
 </tr>
 </tbody>
@@ -2142,7 +2145,7 @@ manPlots</code></pre>
 saveRDS(topTables_cqn, here(&quot;files/topTables_cqn.Rds&quot;))</code></pre>
 <pre class="r"><code>sessionInfo() %&gt;%
   pander()</code></pre>
-<p><strong>R version 4.2.1 (2022-06-23)</strong></p>
+<p><strong>R version 4.2.3 (2023-03-15)</strong></p>
 <p><strong>Platform:</strong> x86_64-pc-linux-gnu (64-bit)</p>
 <p><strong>locale:</strong> <em>LC_CTYPE=en_AU.UTF-8</em>,
 <em>LC_NUMERIC=C</em>, <em>LC_TIME=en_AU.UTF-8</em>,
@@ -2150,96 +2153,106 @@ saveRDS(topTables_cqn, here(&quot;files/topTables_cqn.Rds&quot;))</code></pre>
 <em>LC_MESSAGES=en_AU.UTF-8</em>, <em>LC_PAPER=en_AU.UTF-8</em>,
 <em>LC_NAME=C</em>, <em>LC_ADDRESS=C</em>, <em>LC_TELEPHONE=C</em>,
 <em>LC_MEASUREMENT=en_AU.UTF-8</em> and <em>LC_IDENTIFICATION=C</em></p>
-<p><strong>attached base packages:</strong> <em>stats4</em>,
-<em>splines</em>, <em>stats</em>, <em>graphics</em>, <em>grDevices</em>,
-<em>utils</em>, <em>datasets</em>, <em>methods</em> and
-<em>base</em></p>
-<p><strong>other attached packages:</strong>
-<em>ensembldb(v.2.20.1)</em>, <em>AnnotationFilter(v.1.20.0)</em>,
-<em>GenomicFeatures(v.1.48.1)</em>, <em>AnnotationDbi(v.1.58.0)</em>,
-<em>Biobase(v.2.56.0)</em>, <em>GenomicRanges(v.1.48.0)</em>,
-<em>GenomeInfoDb(v.1.32.2)</em>, <em>IRanges(v.2.30.0)</em>,
-<em>S4Vectors(v.0.34.0)</em>, <em>gtools(v.3.9.2.1)</em>,
-<em>htmltools(v.0.5.2)</em>, <em>DT(v.0.23)</em>,
-<em>cqn(v.1.42.0)</em>, <em>quantreg(v.5.93)</em>,
-<em>SparseM(v.1.81)</em>, <em>preprocessCore(v.1.58.0)</em>,
-<em>nor1mix(v.1.3-0)</em>, <em>mclust(v.5.4.10)</em>,
-<em>pheatmap(v.1.0.12)</em>, <em>fgsea(v.1.22.0)</em>,
-<em>edgeR(v.3.38.1)</em>, <em>limma(v.3.52.1)</em>,
-<em>rmarkdown(v.2.14)</em>, <em>pander(v.0.6.5)</em>,
-<em>ggpubr(v.0.4.0)</em>, <em>RColorBrewer(v.1.1-3)</em>,
-<em>ggrepel(v.0.9.1)</em>, <em>tictoc(v.1.0.1)</em>,
-<em>kableExtra(v.1.3.4)</em>, <em>scales(v.1.2.0)</em>,
-<em>AnnotationHub(v.3.4.0)</em>, <em>BiocFileCache(v.2.4.0)</em>,
-<em>dbplyr(v.2.1.1)</em>, <em>BiocGenerics(v.0.42.0)</em>,
-<em>here(v.1.0.1)</em>, <em>future.apply(v.1.9.0)</em>,
-<em>future(v.1.25.0)</em>, <em>magrittr(v.2.0.3)</em>,
-<em>forcats(v.0.5.1)</em>, <em>stringr(v.1.4.0)</em>,
-<em>dplyr(v.1.0.9)</em>, <em>purrr(v.0.3.4)</em>,
-<em>readr(v.2.1.2)</em>, <em>tidyr(v.1.2.0)</em>,
-<em>tibble(v.3.1.7)</em>, <em>ggplot2(v.3.3.6)</em> and
-<em>tidyverse(v.1.3.1)</em></p>
+<p><strong>attached base packages:</strong> <em>splines</em>,
+<em>grid</em>, <em>stats4</em>, <em>stats</em>, <em>graphics</em>,
+<em>grDevices</em>, <em>utils</em>, <em>datasets</em>, <em>methods</em>
+and <em>base</em></p>
+<p><strong>other attached packages:</strong> <em>gtools(v.3.9.4)</em>,
+<em>htmltools(v.0.5.4)</em>, <em>DT(v.0.27)</em>,
+<em>cqn(v.1.44.0)</em>, <em>quantreg(v.5.94)</em>,
+<em>SparseM(v.1.81)</em>, <em>preprocessCore(v.1.60.2)</em>,
+<em>nor1mix(v.1.3-0)</em>, <em>mclust(v.6.0.0)</em>,
+<em>pheatmap(v.1.0.12)</em>, <em>fgsea(v.1.24.0)</em>,
+<em>edgeR(v.3.40.2)</em>, <em>tictoc(v.1.1)</em>,
+<em>future.apply(v.1.10.0)</em>, <em>future(v.1.31.0)</em>,
+<em>ensembldb(v.2.22.0)</em>, <em>AnnotationFilter(v.1.22.0)</em>,
+<em>GenomicFeatures(v.1.50.4)</em>, <em>AnnotationDbi(v.1.60.0)</em>,
+<em>limma(v.3.54.1)</em>, <em>readxl(v.1.4.2)</em>,
+<em>msigdbr(v.7.5.1)</em>, <em>zoo(v.1.8-11)</em>,
+<em>Gviz(v.1.42.1)</em>, <em>VariantAnnotation(v.1.44.1)</em>,
+<em>Rsamtools(v.2.14.0)</em>, <em>Biostrings(v.2.66.0)</em>,
+<em>XVector(v.0.38.0)</em>, <em>SummarizedExperiment(v.1.28.0)</em>,
+<em>Biobase(v.2.58.0)</em>, <em>GenomicRanges(v.1.50.2)</em>,
+<em>GenomeInfoDb(v.1.34.9)</em>, <em>IRanges(v.2.32.0)</em>,
+<em>S4Vectors(v.0.36.1)</em>, <em>MatrixGenerics(v.1.10.0)</em>,
+<em>matrixStats(v.0.63.0)</em>, <em>viridis(v.0.6.2)</em>,
+<em>viridisLite(v.0.4.1)</em>, <em>rmarkdown(v.2.20)</em>,
+<em>pander(v.0.6.5)</em>, <em>ggpubr(v.0.6.0)</em>,
+<em>RColorBrewer(v.1.1-3)</em>, <em>ggrepel(v.0.9.3)</em>,
+<em>kableExtra(v.1.3.4)</em>, <em>scales(v.1.2.1)</em>,
+<em>AnnotationHub(v.3.6.0)</em>, <em>BiocFileCache(v.2.6.1)</em>,
+<em>dbplyr(v.2.3.0)</em>, <em>BiocGenerics(v.0.44.0)</em>,
+<em>magrittr(v.2.0.3)</em>, <em>lubridate(v.1.9.2)</em>,
+<em>forcats(v.1.0.0)</em>, <em>stringr(v.1.5.0)</em>,
+<em>dplyr(v.1.1.0)</em>, <em>purrr(v.1.0.1)</em>,
+<em>readr(v.2.1.4)</em>, <em>tidyr(v.1.3.0)</em>,
+<em>tibble(v.3.1.8)</em>, <em>ggplot2(v.3.4.1)</em>,
+<em>tidyverse(v.2.0.0)</em> and <em>here(v.1.0.1)</em></p>
 <p><strong>loaded via a namespace (and not attached):</strong>
-<em>utf8(v.1.2.2)</em>, <em>tidyselect(v.1.1.2)</em>,
-<em>RSQLite(v.2.2.14)</em>, <em>htmlwidgets(v.1.5.4)</em>,
-<em>grid(v.4.2.1)</em>, <em>BiocParallel(v.1.30.2)</em>,
-<em>munsell(v.0.5.0)</em>, <em>codetools(v.0.2-18)</em>,
-<em>withr(v.2.5.0)</em>, <em>colorspace(v.2.0-3)</em>,
-<em>filelock(v.1.0.2)</em>, <em>highr(v.0.9)</em>,
-<em>knitr(v.1.39)</em>, <em>rstudioapi(v.0.13)</em>,
-<em>ggsignif(v.0.6.3)</em>, <em>listenv(v.0.8.0)</em>,
-<em>labeling(v.0.4.2)</em>, <em>MatrixGenerics(v.1.8.0)</em>,
-<em>GenomeInfoDbData(v.1.2.8)</em>, <em>farver(v.2.1.0)</em>,
-<em>bit64(v.4.0.5)</em>, <em>rprojroot(v.2.0.3)</em>,
-<em>parallelly(v.1.31.1)</em>, <em>vctrs(v.0.4.1)</em>,
-<em>generics(v.0.1.2)</em>, <em>xfun(v.0.31)</em>, <em>R6(v.2.5.1)</em>,
-<em>locfit(v.1.5-9.5)</em>, <em>bitops(v.1.0-7)</em>,
-<em>cachem(v.1.0.6)</em>, <em>DelayedArray(v.0.22.0)</em>,
-<em>assertthat(v.0.2.1)</em>, <em>vroom(v.1.5.7)</em>,
-<em>promises(v.1.2.0.1)</em>, <em>BiocIO(v.1.6.0)</em>,
-<em>gtable(v.0.3.0)</em>, <em>globals(v.0.15.0)</em>,
-<em>rlang(v.1.0.2)</em>, <em>MatrixModels(v.0.5-0)</em>,
-<em>systemfonts(v.1.0.4)</em>, <em>rtracklayer(v.1.56.0)</em>,
-<em>rstatix(v.0.7.0)</em>, <em>lazyeval(v.0.2.2)</em>,
-<em>broom(v.0.8.0)</em>, <em>BiocManager(v.1.30.18)</em>,
-<em>yaml(v.2.3.5)</em>, <em>abind(v.1.4-5)</em>,
-<em>modelr(v.0.1.8)</em>, <em>backports(v.1.4.1)</em>,
-<em>httpuv(v.1.6.5)</em>, <em>tools(v.4.2.1)</em>,
+<em>utf8(v.1.2.3)</em>, <em>tidyselect(v.1.2.0)</em>,
+<em>RSQLite(v.2.3.0)</em>, <em>htmlwidgets(v.1.6.1)</em>,
+<em>BiocParallel(v.1.32.5)</em>, <em>munsell(v.0.5.0)</em>,
+<em>codetools(v.0.2-19)</em>, <em>interp(v.1.1-3)</em>,
+<em>withr(v.2.5.0)</em>, <em>colorspace(v.2.1-0)</em>,
+<em>filelock(v.1.0.2)</em>, <em>highr(v.0.10)</em>,
+<em>knitr(v.1.42)</em>, <em>rstudioapi(v.0.14)</em>,
+<em>ggsignif(v.0.6.4)</em>, <em>listenv(v.0.9.0)</em>,
+<em>labeling(v.0.4.2)</em>, <em>GenomeInfoDbData(v.1.2.9)</em>,
+<em>farver(v.2.1.1)</em>, <em>bit64(v.4.0.5)</em>,
+<em>rprojroot(v.2.0.3)</em>, <em>parallelly(v.1.34.0)</em>,
+<em>vctrs(v.0.5.2)</em>, <em>generics(v.0.1.3)</em>,
+<em>xfun(v.0.37)</em>, <em>biovizBase(v.1.46.0)</em>,
+<em>timechange(v.0.2.0)</em>, <em>R6(v.2.5.1)</em>,
+<em>locfit(v.1.5-9.7)</em>, <em>bitops(v.1.0-7)</em>,
+<em>cachem(v.1.0.6)</em>, <em>DelayedArray(v.0.24.0)</em>,
+<em>assertthat(v.0.2.1)</em>, <em>vroom(v.1.6.1)</em>,
+<em>promises(v.1.2.0.1)</em>, <em>BiocIO(v.1.8.0)</em>,
+<em>nnet(v.7.3-18)</em>, <em>gtable(v.0.3.1)</em>,
+<em>globals(v.0.16.2)</em>, <em>MatrixModels(v.0.5-1)</em>,
+<em>rlang(v.1.0.6)</em>, <em>systemfonts(v.1.0.4)</em>,
+<em>rtracklayer(v.1.58.0)</em>, <em>rstatix(v.0.7.2)</em>,
+<em>lazyeval(v.0.2.2)</em>, <em>dichromat(v.2.0-0.1)</em>,
+<em>plyranges(v.1.18.0)</em>, <em>broom(v.1.0.3)</em>,
+<em>checkmate(v.2.1.0)</em>, <em>BiocManager(v.1.30.20)</em>,
+<em>yaml(v.2.3.7)</em>, <em>abind(v.1.4-5)</em>,
+<em>backports(v.1.4.1)</em>, <em>httpuv(v.1.6.9)</em>,
+<em>Hmisc(v.4.8-0)</em>, <em>tools(v.4.2.3)</em>,
 <em>ellipsis(v.0.3.2)</em>, <em>jquerylib(v.0.1.4)</em>,
-<em>Rcpp(v.1.0.8.3)</em>, <em>progress(v.1.2.2)</em>,
-<em>zlibbioc(v.1.42.0)</em>, <em>RCurl(v.1.98-1.6)</em>,
-<em>prettyunits(v.1.1.1)</em>, <em>SummarizedExperiment(v.1.26.1)</em>,
-<em>haven(v.2.5.0)</em>, <em>fs(v.1.5.2)</em>,
-<em>data.table(v.1.14.2)</em>, <em>reprex(v.2.0.1)</em>,
-<em>ProtGenerics(v.1.28.0)</em>, <em>matrixStats(v.0.62.0)</em>,
-<em>hms(v.1.1.1)</em>, <em>mime(v.0.12)</em>, <em>evaluate(v.0.15)</em>,
-<em>xtable(v.1.8-4)</em>, <em>XML(v.3.99-0.9)</em>,
-<em>readxl(v.1.4.0)</em>, <em>gridExtra(v.2.3)</em>,
-<em>compiler(v.4.2.1)</em>, <em>biomaRt(v.2.52.0)</em>,
-<em>crayon(v.1.5.1)</em>, <em>mgcv(v.1.8-40)</em>,
+<em>Rcpp(v.1.0.10)</em>, <em>base64enc(v.0.1-3)</em>,
+<em>progress(v.1.2.2)</em>, <em>zlibbioc(v.1.44.0)</em>,
+<em>RCurl(v.1.98-1.10)</em>, <em>prettyunits(v.1.1.1)</em>,
+<em>rpart(v.4.1.19)</em>, <em>deldir(v.1.0-6)</em>,
+<em>cowplot(v.1.1.1)</em>, <em>cluster(v.2.1.4)</em>,
+<em>data.table(v.1.14.8)</em>, <em>ProtGenerics(v.1.30.0)</em>,
+<em>hms(v.1.1.2)</em>, <em>mime(v.0.12)</em>, <em>evaluate(v.0.20)</em>,
+<em>xtable(v.1.8-4)</em>, <em>XML(v.3.99-0.13)</em>,
+<em>jpeg(v.0.1-10)</em>, <em>gridExtra(v.2.3)</em>,
+<em>compiler(v.4.2.3)</em>, <em>biomaRt(v.2.54.0)</em>,
+<em>crayon(v.1.5.2)</em>, <em>mgcv(v.1.8-42)</em>,
 <em>later(v.1.3.0)</em>, <em>tzdb(v.0.3.0)</em>,
-<em>lubridate(v.1.8.0)</em>, <em>DBI(v.1.1.2)</em>,
-<em>MASS(v.7.3-58)</em>, <em>rappdirs(v.0.3.3)</em>,
-<em>Matrix(v.1.4-1)</em>, <em>car(v.3.0-13)</em>, <em>cli(v.3.3.0)</em>,
-<em>parallel(v.4.2.1)</em>, <em>pkgconfig(v.2.0.3)</em>,
-<em>GenomicAlignments(v.1.32.0)</em>, <em>xml2(v.1.3.3)</em>,
-<em>svglite(v.2.1.0)</em>, <em>bslib(v.0.3.1)</em>,
-<em>webshot(v.0.5.3)</em>, <em>XVector(v.0.36.0)</em>,
-<em>rvest(v.1.0.2)</em>, <em>digest(v.0.6.29)</em>,
-<em>Biostrings(v.2.64.0)</em>, <em>cellranger(v.1.1.0)</em>,
-<em>fastmatch(v.1.1-3)</em>, <em>restfulr(v.0.0.13)</em>,
-<em>curl(v.4.3.2)</em>, <em>shiny(v.1.7.1)</em>,
-<em>Rsamtools(v.2.12.0)</em>, <em>rjson(v.0.2.21)</em>,
-<em>nlme(v.3.1-159)</em>, <em>lifecycle(v.1.0.1)</em>,
-<em>jsonlite(v.1.8.0)</em>, <em>carData(v.3.0-5)</em>,
-<em>viridisLite(v.0.4.0)</em>, <em>fansi(v.1.0.3)</em>,
-<em>pillar(v.1.7.0)</em>, <em>lattice(v.0.20-45)</em>,
-<em>KEGGREST(v.1.36.0)</em>, <em>fastmap(v.1.1.0)</em>,
-<em>httr(v.1.4.3)</em>, <em>survival(v.3.4-0)</em>,
-<em>interactiveDisplayBase(v.1.34.0)</em>, <em>glue(v.1.6.2)</em>,
-<em>png(v.0.1-7)</em>, <em>BiocVersion(v.3.15.2)</em>,
-<em>bit(v.4.0.4)</em>, <em>stringi(v.1.7.6)</em>,
-<em>sass(v.0.4.1)</em>, <em>blob(v.1.2.3)</em> and
+<em>Formula(v.1.2-4)</em>, <em>DBI(v.1.1.3)</em>,
+<em>MASS(v.7.3-58.3)</em>, <em>rappdirs(v.0.3.3)</em>,
+<em>babelgene(v.22.9)</em>, <em>Matrix(v.1.5-3)</em>,
+<em>car(v.3.1-1)</em>, <em>cli(v.3.6.0)</em>,
+<em>parallel(v.4.2.3)</em>, <em>pkgconfig(v.2.0.3)</em>,
+<em>GenomicAlignments(v.1.34.0)</em>, <em>foreign(v.0.8-84)</em>,
+<em>xml2(v.1.3.3)</em>, <em>svglite(v.2.1.1)</em>,
+<em>bslib(v.0.4.2)</em>, <em>webshot(v.0.5.4)</em>,
+<em>rvest(v.1.0.3)</em>, <em>digest(v.0.6.31)</em>,
+<em>fastmatch(v.1.1-3)</em>, <em>cellranger(v.1.1.0)</em>,
+<em>htmlTable(v.2.4.1)</em>, <em>restfulr(v.0.0.15)</em>,
+<em>curl(v.5.0.0)</em>, <em>shiny(v.1.7.4)</em>,
+<em>rjson(v.0.2.21)</em>, <em>nlme(v.3.1-162)</em>,
+<em>lifecycle(v.1.0.3)</em>, <em>jsonlite(v.1.8.4)</em>,
+<em>carData(v.3.0-5)</em>, <em>BSgenome(v.1.66.3)</em>,
+<em>fansi(v.1.0.4)</em>, <em>pillar(v.1.8.1)</em>,
+<em>lattice(v.0.20-45)</em>, <em>KEGGREST(v.1.38.0)</em>,
+<em>fastmap(v.1.1.0)</em>, <em>httr(v.1.4.4)</em>,
+<em>survival(v.3.5-5)</em>, <em>interactiveDisplayBase(v.1.36.0)</em>,
+<em>glue(v.1.6.2)</em>, <em>png(v.0.1-8)</em>,
+<em>BiocVersion(v.3.16.0)</em>, <em>bit(v.4.0.5)</em>,
+<em>stringi(v.1.7.12)</em>, <em>sass(v.0.4.5)</em>,
+<em>blob(v.1.2.3)</em>, <em>latticeExtra(v.0.6-30)</em> and
 <em>memoise(v.2.0.1)</em></p>
 </div>
 </div>

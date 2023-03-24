@@ -1,0 +1,121 @@
+---
+title: "Enrichment Analysis"
+subtitle: "210216_sorl1_snv dataset"
+author: "Lachlan Baer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    fig_width: 8
+    fig_height: 6
+    fig_align: "center"
+    code_folding: hide
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE,
+  fig.align = "center"
+)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r}
+pathway_order <- kg_gsea_eqtl$V1482Afs_het[[10]] %>%
+  mutate(sig = FDR < 0.05) %>%
+  dplyr::select(Pathway, before_p = pval, before_FDR = FDR, before_sig = sig) %>%
+  left_join(kg_gsea_dar$V1482Afs_het) %>%
+  mutate(sig = FDR < 0.05) %>%
+  dplyr::select(
+    Pathway, before_p, before_sig, before_FDR,
+    after_p = pval, after_FDR = FDR, after_sig = sig
+  ) %>%
+  dplyr::arrange(after_FDR) %>%
+  mutate(
+    any_sig = as.logical(before_sig + after_sig)
+  ) %>%
+  dplyr::filter(any_sig) %>%
+  mutate(
+    Pathway = str_replace_all(Pathway, "_", " "),
+    Pathway = str_to_title(Pathway),
+    Pathway = case_when(
+      Pathway == "Dna Replication" ~ "DNA Replication",
+      Pathway == "Citrate Cycle Tca Cycle" ~ "Citrate Cycle TCA Cycle",
+      Pathway == "Aminoacyl Trna Biosynthesis" ~ "Aminoacyl tRNA Biosynthesis",
+      TRUE ~ Pathway
+    )
+  ) %>%
+  pull(Pathway) %>%
+  rev()
+```
+
+```{r}
+kg_gsea_eqtl$V1482Afs_het[[10]] %>%
+  mutate(sig = FDR < 0.05) %>%
+  dplyr::select(Pathway, before_p = pval, before_FDR = FDR, before_sig = sig) %>%
+  left_join(kg_gsea_dar$V1482Afs_het) %>%
+  mutate(sig = FDR < 0.05) %>%
+  dplyr::select(
+    Pathway, before_p, before_sig, before_FDR,
+    after_p = pval, after_FDR = FDR, after_sig = sig
+  ) %>%
+  mutate(
+    any_sig = as.logical(before_sig + after_sig)
+  ) %>%
+  dplyr::filter(any_sig) %>%
+  # dplyr::slice(1:5) %>%  # Take just the top 5
+  pivot_longer(cols = c("before_p", "after_p"), names_to = "p_group", values_to = "p") %>%
+  mutate(
+    p_group = factor(p_group, levels = c("after_p", "before_p")),
+    Pathway = str_to_title((str_replace_all(Pathway, "_", " "))),
+    Pathway = case_when(
+      Pathway == "Dna Replication" ~ "DNA Replication",
+      Pathway == "Citrate Cycle Tca Cycle" ~ "Citrate Cycle TCA Cycle",
+      Pathway == "Aminoacyl Trna Biosynthesis" ~ "Aminoacyl tRNA Biosynthesis",
+      TRUE ~ Pathway
+    ),
+    Pathway = factor(Pathway, levels = pathway_order),
+    labs = "*"
+  ) %>%
+  mutate(
+    labs = case_when(
+      p_group == "before_p" ~ before_sig,
+      p_group == "after_p" ~ after_sig,
+    ),
+    labs = ifelse(labs, "*", "")
+  ) %>%
+  ggplot(aes(Pathway, -log10(p), group = p_group, fill = p_group)) +
+  geom_bar(stat = "identity", position = "dodge", colour = "black") +
+  geom_text(
+    aes(Pathway, -log10(p) + 0.3, group = p_group, label = labs),
+    position = position_dodge2(width = 0.9, padding = 0.2),
+    size = 3,
+    vjust = 0.77
+  ) +
+  coord_flip() +
+  scale_fill_manual(
+    limits = c("before_p", "after_p"),
+    values = c("#88CCEE", "#CC6677"),
+    labels = c("Before weighting", "After weighting"),
+    name = ""
+  ) +
+  scale_y_continuous(breaks = seq(0, 20, 2)) +
+  labs(y = log10plab)
+```
+
+```{r}
+ggsave(
+  "~/phd/publications/fisher_pub/figures/supp/weighting_comparison_sorl1.png",
+  device = "png",
+  width = 18,
+  height = 18,
+  units = "cm"
+)
+```
