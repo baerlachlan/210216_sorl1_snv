@@ -32,7 +32,7 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 
 ```{r}
 png(
-  filename = "~/phd/publications/fisher_pub/figures/main/dar_sorl1.png",
+  filename = "~/phd/publications/fisher_pub/figures/supp/dar_sorl1.png",
   width = 32,
   height = 14,
   units = "cm",
@@ -41,7 +41,7 @@ png(
 ```
 
 ```{r}
-ind <- 2
+ind <- 1
 chr <- 15
 genes_plot <- genes[deGenes[[ind]]$gene_id]
 mutation <- genes[genes$gene_name == "sorl1"]
@@ -171,7 +171,7 @@ dev.off()
 # DAR Cumulative dist
 
 ```{r}
-allele_dist[[2]] %>%
+allele_dist[[1]] %>%
   split(seqnames(.)) %>%
   lapply(function(chr){
     tibble(
