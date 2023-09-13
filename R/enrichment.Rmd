@@ -27,6 +27,15 @@ knitr::opts_chunk$set(
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
+# Reproducibility of this analysis
+
+Please note that newer versions of `babelgene` and potentially `msigdbr` cause issues with the reproducibility of this document.
+The issues lies within the `babelgene` package (a dependency of `msigdbr`), which pulls the mappings of zebrafish orthologs to human genes, as required for the construction of gene sets.
+Unfortunately the `msigdbr()` function does not possess arguments to control this behaviour in a reproducible manner, and therefore the package version dictates the output of the function.
+To successfully reproduce this analysis the user's system must have `babelgene v22.3` installed, and also potentially `misgdbr v7.4.1` (analysis successfully reproduced with this version but not tested with newer versions i.e. 7.5.1).
+This document was rendered using a docker container with the required package versions installed (see Session information below for a complete list of packages).
+Packages were installed using the `R/docker-setup.R` script on a fresh container spun up from the `bioconductor/bioconductor_docker:RELEASE_3_16` image.
+
 # Setup
 
 ```{r packages}
@@ -55,6 +64,7 @@ suppressPackageStartupMessages({
   library(htmltools)
   library(msigdbr)
   library(fgsea)
+  library(plyranges)
 })
 ```
 
@@ -65,7 +75,7 @@ cores <- availableCores() - 1
 ```
 
 ```{r}
-source("~/bioinformatics/bioToolkit/lbFuncs.R")
+source(here("files/lbFuncs.R"))
 ```
 
 ## EnsDb
@@ -220,11 +230,12 @@ deGenes <- lapply(topTables, function(tt){
 ## geneDAR
 
 ```{r}
-geneDAR <- readRDS(here("files/geneDAR.Rds")) %>%
+geneDAR <- readRDS(here("files/masterGR.Rds")) %>%
   map2(topTables, function(x, y){
     left_join(as_tibble(x), y[c("gene_id", "logFC", "PValue", "DE")]) %>%
       GRanges()
-  })
+  }) %>%
+  endoapply(function(x){plyranges::mutate(x, dar = diversity)})
 ```
 
 # Gene sets
@@ -1950,4 +1961,10 @@ tagList({
       )
   }, tbl = wk_gsea_dar, name = names(wk_gsea_dar))
 })
+```
+
+# Session information
+
+```{r}
+sessionInfo()
 ```
