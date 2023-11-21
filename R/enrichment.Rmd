@@ -325,8 +325,9 @@ byChr_pvals <- sapply(byChr_fisher, function(geno){
       sig = bonf < 0.05,
       p = signif(p, digits = 3),
       bonf = signif(bonf, digits = 3),
-    ) %>%
-    dplyr::filter(sig)
+    ) 
+  # %>%
+  #   dplyr::filter(sig)
 }, simplify = FALSE)
 ```
 
